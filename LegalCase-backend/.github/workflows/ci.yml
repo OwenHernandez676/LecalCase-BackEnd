@@ -1,0 +1,69 @@
+name: Legal Case Backend · CI/CD
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    name: Build, Lint & Test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: { node: [20] }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node ${{ matrix.node }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests
+        run: npm test -- --ci --reporters=default
+
+      - name: Compile TypeScript / NestJS
+        run: npm run build
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: legal-case-backend-dist
+          path: dist/
+          retention-days: 7
+
+  deploy:
+    name: Deploy
+    needs: build-and-test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: legal-case-backend-dist
+          path: dist/
+
+      # ─── Plataforma de despliegue ───
+      # Render: requiere RENDER_DEPLOY_HOOK_URL en GitHub Secrets.
+      - name: Trigger Render deploy
+        if: env.RENDER_DEPLOY_HOOK_URL != ''
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: curl -fsSL -X POST "$RENDER_DEPLOY_HOOK_URL"
+
+      # Alternativa Railway:
+      # - run: npx -y @railway/cli up --service backend --token ${{ secrets.RAILWAY_TOKEN }}
+
+      - name: Deploy summary
+        run: echo "✅ Legal Case backend desplegado desde commit ${{ github.sha }}"
