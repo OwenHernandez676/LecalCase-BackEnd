@@ -8,11 +8,14 @@ export interface CaseFilter {
   q?: string;
 }
 
-export abstract class CaseRepository {
-  abstract findById(id: string): Promise<LegalCase | null>;
-  abstract findAll(filter?: CaseFilter): Promise<LegalCase[]>;
-  abstract create(c: Omit<LegalCase, 'id' | 'createdAt' | 'updatedAt'>): Promise<LegalCase>;
-  abstract update(id: string, patch: Partial<LegalCase>): Promise<LegalCase | null>;
-  abstract countByStatus(): Promise<Record<CaseStatus, number>>;
-  abstract countByType(): Promise<Record<string, number>>;
+export type NewCase = Omit<LegalCase, 'id' | 'createdAt' | 'updatedAt'>;
+
+export interface CaseRepository {
+  findById(id: string): Promise<LegalCase | null>;
+  findAll(filter?: CaseFilter): Promise<LegalCase[]>;
+  count(): Promise<number>;
+  create(c: NewCase): Promise<LegalCase>;
+  update(id: string, patch: Partial<LegalCase>): Promise<LegalCase | null>;
+  countByStatus(): Promise<Record<CaseStatus, number>>;
+  countByType(): Promise<Record<string, number>>;
 }

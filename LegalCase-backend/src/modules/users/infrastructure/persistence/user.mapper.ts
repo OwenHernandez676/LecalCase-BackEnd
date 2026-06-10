@@ -1,13 +1,13 @@
 import { User } from '../../domain/entities/user.entity';
-import { UserDocument } from './user.schema';
+import { UserDoc } from './user.schema';
 
 /** Traduce documentos Mongoose ↔ entidades de dominio. */
 export class UserMapper {
-  static toDomain(doc: UserDocument): User {
+  static toDomain(doc: UserDoc): User {
     return new User(
       doc.id, doc.nombre, doc.correo, doc.rol, doc.activo,
       doc.contrasena, doc.especialidad, doc.cargaTrabajo, doc.telefono,
-      (doc as any).createdAt, (doc as any).updatedAt,
+      doc.createdAt, doc.updatedAt,
     );
   }
 }

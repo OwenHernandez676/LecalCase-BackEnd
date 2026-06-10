@@ -1,4 +1,4 @@
-name: Legal Case Backend · CI/CD
+name: LegalCase Backend · CI/CD
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
 
 jobs:
   build-and-test:
-    name: Build, Lint & Test
+    name: Build & Test
     runs-on: ubuntu-latest
     strategy:
       matrix: { node: [20] }
@@ -28,13 +28,13 @@ jobs:
       - name: Run unit tests
         run: npm test -- --ci --reporters=default
 
-      - name: Compile TypeScript / NestJS
+      - name: Compile TypeScript
         run: npm run build
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: legal-case-backend-dist
+          name: legalcase-backend-dist
           path: dist/
           retention-days: 7
 
@@ -51,10 +51,9 @@ jobs:
       - name: Download build artifact
         uses: actions/download-artifact@v4
         with:
-          name: legal-case-backend-dist
+          name: legalcase-backend-dist
           path: dist/
 
-      # ─── Plataforma de despliegue ───
       # Render: requiere RENDER_DEPLOY_HOOK_URL en GitHub Secrets.
       - name: Trigger Render deploy
         if: env.RENDER_DEPLOY_HOOK_URL != ''
@@ -66,4 +65,4 @@ jobs:
       # - run: npx -y @railway/cli up --service backend --token ${{ secrets.RAILWAY_TOKEN }}
 
       - name: Deploy summary
-        run: echo "✅ Legal Case backend desplegado desde commit ${{ github.sha }}"
+        run: echo "✅ LegalCase backend desplegado desde commit ${{ github.sha }}"

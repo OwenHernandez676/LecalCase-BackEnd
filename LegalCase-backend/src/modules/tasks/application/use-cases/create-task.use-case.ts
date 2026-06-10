@@ -1,16 +1,14 @@
-import { Inject, Injectable } from '@nestjs/common';
 import { TaskRepository } from '../../domain/ports/task.repository';
+import { RealtimePublisher } from '../../../../shared/ports/realtime-publisher.port';
 import { CreateTaskDto } from '../dto/create-task.dto';
-import { RealtimeService } from '../../../../realtime/realtime.service';
-@Injectable()
 export class CreateTaskUseCase {
-  constructor(
-    @Inject(TaskRepository) private readonly repo: TaskRepository,
-    private readonly realtime: RealtimeService,
-  ) {}
+  constructor(private readonly repo: TaskRepository, private readonly realtime: RealtimePublisher) {}
   async execute(dto: CreateTaskDto) {
-    const t = await this.repo.create({ ...dto, fechaLimite: new Date(dto.fechaLimite), completada: false } as any);
-    this.realtime.publish('task.created', t);
-    return t;
+    const created = await this.repo.create({
+      titulo: dto.titulo, expedienteId: dto.expedienteId, asignadoA: dto.asignadoA,
+      prioridad: dto.prioridad, fechaLimite: new Date(dto.fechaLimite), completada: false,
+    });
+    this.realtime.publish('task.created', created);
+    return created;
   }
 }

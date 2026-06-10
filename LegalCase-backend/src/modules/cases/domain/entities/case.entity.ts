@@ -21,9 +21,8 @@ export class LegalCase {
     public readonly updatedAt?: Date,
   ) {}
 
-  /** Reglas de transición de estado. */
+  /** Regla de negocio: un expediente Finalizado siempre queda al 100 %. */
   static nextProgressFor(estado: CaseStatus, current: number): number {
-    if (estado === 'Finalizado') return 100;
-    return current;
+    return estado === 'Finalizado' ? 100 : current;
   }
 }

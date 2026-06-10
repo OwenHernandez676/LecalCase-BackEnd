@@ -1,105 +1,136 @@
-# Bitácora Técnica — Backend LEXVANTE (NestJS · Hexagonal)
+# Bitácora de decisiones técnicas — LegalCase Backend (Express / MEAN)
 
-Registro de las decisiones de arquitectura tomadas al construir el backend de LEXVANTE.
-
----
-
-### D-01 · Arquitectura hexagonal (Ports & Adapters) por módulo
-Cada módulo de negocio se separa en tres capas con dependencias siempre hacia
-adentro (`infrastructure → application → domain`). El dominio es código TypeScript
-puro: sin Mongoose, sin Nest, sin HTTP. **Beneficio:** las reglas de negocio son
-estables aunque cambie la base de datos o el framework, y los casos de uso son
-testeables sin levantar Mongo ni HTTP.
-
-### D-02 · Puertos abstractos como interfaz + token de DI
-Cada puerto (`UserRepository`, `CaseRepository`, `PasswordHasher`, …) se declara
-como `abstract class`. Sirve simultáneamente como **contrato** (TypeScript) y como
-**token de DI** (Nest). Cada módulo registra `{ provide: UserRepository, useClass: MongoUserRepository }`.
-**Razón:** los casos de uso reciben la abstracción, no la implementación —
-sustituir Mongo por otra base requiere sólo un nuevo adaptador, sin tocar dominio
-ni aplicación.
-
-### D-03 · Casos de uso "uno por archivo"
-Cada caso de uso es una clase con un único método `execute()` (Single
-Responsibility). Ejemplos: `LoginUseCase`, `CreateCaseUseCase`,
-`ResolveRequestUseCase`. Los controladores **sólo delegan**.
-**Beneficio:** los criterios 2 (Funcionalidades por Rol) y 6 (Casos de uso) de la
-rúbrica se satisfacen de forma natural — la lógica de negocio nunca vive en
-controladores ni en repositorios.
-
-### D-04 · DTOs con `class-validator` y `ValidationPipe` global
-Cada caso de uso recibe un DTO declarativo con decoradores (`@IsEmail`, `@IsIn`,
-`@MinLength`, …). El `ValidationPipe` global de Nest valida automáticamente con
-`whitelist: true` y `forbidNonWhitelisted: true`.
-**Beneficio:** validaciones declarativas, mensajes consistentes y blindaje contra
-campos no esperados.
-
-### D-05 · MongoDB con Mongoose, mappers explícitos
-La capa de persistencia usa `@nestjs/mongoose`. Cada esquema vive en
-`infrastructure/persistence/<entity>.schema.ts` y existe un **mapper explícito**
-(`<entity>.mapper.ts`) que traduce `Document` ↔ entidad de dominio.
-**Razón:** el dominio nunca conoce a Mongoose; el cruce de capa es siempre
-explícito y auditable. Los índices viven con los schemas.
-
-### D-06 · Tiempo real desacoplado vía `RealtimeService`
-El gateway de WebSockets (`RealtimeGateway`) es infraestructura. Los casos de uso
-inyectan un `RealtimeService` que ENCAPSULA el gateway. Cuando un caso de uso
-crea un expediente, llama `this.realtime.publish('case.created', case)` — sin
-saber nada de Socket.IO.
-**Beneficio:** la capa de aplicación queda libre del detalle de transporte; si
-mañana se cambia Socket.IO por Server-Sent Events, sólo se reemplaza el adaptador.
-
-### D-07 · Flujo "Solicitud aprobada → Expediente creado"
-`ResolveRequestUseCase` orquesta dos casos de uso: actualiza la solicitud y, si
-estado = `Aprobada`, invoca `CreateCaseUseCase.execute(...)`. Es composición de
-casos de uso, no llamadas directas al repositorio de expedientes — preserva la
-lógica de creación (generación de código `EXP-####`, emisión de evento en vivo).
-**Razón:** los flujos de negocio quedan documentados como composición de casos
-de uso, fácil de leer y modificar.
-
-### D-08 · JWT con Passport, `PasswordHasher` como puerto
-`LoginUseCase` no depende de `bcrypt` ni de `@nestjs/jwt` por su naturaleza: depende
-del puerto `PasswordHasher` (abstracto) y de `JwtService`. El adaptador
-`BcryptPasswordHasher` implementa el puerto.
-**Beneficio:** el test unitario (`test/login.use-case.spec.ts`) mockea el puerto y
-verifica las cuatro rutas críticas (credenciales correctas, usuario inexistente,
-contraseña incorrecta, usuario inactivo) sin tocar Mongo ni bcrypt real.
-
-### D-09 · RBAC con `@Roles(...)` + `RolesGuard`
-El control de acceso por rol se aplica con un decorador `@Roles('administrador', 'abogado')`
-sobre cada endpoint, leído por `RolesGuard` desde el reflector. El rol viaja en el
-JWT y `JwtStrategy.validate()` lo coloca en `req.user`.
-**Razón:** matriz de permisos clara y centralizada en los controladores, sin
-duplicar lógica de autorización.
-
-### D-10 · Endpoint público para Solicitudes
-`POST /requests` es el único endpoint sin `JwtAuthGuard`: los clientes pueden
-enviar su consulta legal sin estar registrados. Tras la aprobación del admin, se
-crea automáticamente la cuenta del cliente y el expediente.
-**Razón:** modelo de captación de leads para un despacho jurídico real.
-
-### D-11 · CI/CD con GitHub Actions: build, test y deploy
-El workflow `ci.yml` ejecuta `npm ci`, `npm test` y `npm run build` en cada PR.
-En `main` agrega un job de **deploy** que descarga el artifact y dispara un
-webhook de Render (alternativa Railway comentada). Cubre el criterio 8 de la
-rúbrica.
-
-### D-12 · `bcryptjs` en vez de `bcrypt` nativo
-Se eligió `bcryptjs` (puro JS) por encima de `bcrypt` (binding nativo) para
-evitar fallos de build en CI y ambientes serverless donde no hay toolchain de C++.
-El puerto `PasswordHasher` permite cambiar el adaptador sin tocar dominio.
+Registro razonado de las decisiones de arquitectura tomadas al reconstruir el
+backend desde cero con stack MEAN puro (MongoDB Atlas · Express · Angular · Node),
+eliminando por completo NestJS.
 
 ---
 
-## Resumen del cumplimiento de la rúbrica
+## D-01 · Express + TypeScript en lugar de NestJS
 
-| Criterio                                | Cómo se cumple                                                                                          |
-|-----------------------------------------|---------------------------------------------------------------------------------------------------------|
-| **1. Arquitectura hexagonal (3 pts)**   | Tres capas por módulo, dominio puro, puertos abstractos, adaptadores Mongo (D-01, D-02, D-05)           |
-| **2. Funcionalidades por rol (7 pts)**  | RBAC con `@Roles` + `RolesGuard`; matriz documentada; flujo público de solicitudes (D-09, D-10)         |
-| **3. MongoDB + repos desacoplados (5pts)** | Repos detrás de puertos, mappers explícitos, índices con schemas (D-05)                              |
-| **4. Tiempo real (3 pts)**              | Gateway Socket.IO encapsulado en `RealtimeService`, eventos en CRUD, tablero Kanban y reportes (D-06)   |
-| **5. Frontend (7 pts)**                 | Angular 19 standalone + Signals + lazy loading (proyecto separado ya entregado)                         |
-| **6. Casos de uso (3 pts)**             | Un caso de uso por archivo, controladores sólo delegan (D-03)                                           |
-| **7. Testing (1 pt)**                   | `LoginUseCase` con 4 escenarios, mocks de puertos (D-08)                                                |
-| **8. CI/CD (1 pt)**                     | GitHub Actions: install, test, build, artifact, deploy a Render (D-11)                                  |
+**Decisión:** reconstruir sobre Express 4 con TypeScript estricto.
+**Razón:** el requisito del proyecto exige stack MEAN sin framework opinado.
+Express no impone estructura, lo cual nos obliga (y nos permite) a demostrar
+la arquitectura hexagonal de forma explícita, sin esconderla detrás de
+decoradores. Todo lo que NestJS hacía "por magia" ahora es código visible
+y defendible: validación, autenticación, RBAC e inyección de dependencias.
+
+## D-02 · Arquitectura hexagonal estricta por módulo
+
+**Decisión:** cada módulo tiene `domain/` (entidades + puertos), `application/`
+(DTOs + casos de uso) e `infrastructure/` (rutas HTTP + persistencia Mongo).
+**Regla de dependencia:** infrastructure → application → domain, nunca al revés.
+**Razón:** el dominio (`User`, `LegalCase`, `LegalRequest`…) son clases TypeScript
+puras sin imports de Express, Mongoose ni Socket.IO. Se puede cambiar la base de
+datos o el framework HTTP sin tocar una línea de negocio.
+
+## D-03 · Composition Root manual (`src/shared/container.ts`)
+
+**Decisión:** inyección de dependencias manual en un único archivo, sin
+contenedor DI (ni el de Nest ni librerías como tsyringe/inversify).
+**Razón:** (a) cumple "eliminar la DI de NestJS" al pie de la letra;
+(b) el grafo de dependencias completo es visible en una sola pantalla;
+(c) está verificado por el compilador — si un caso de uso necesita un puerto
+y no se le pasa, **TypeScript no compila**. Es la forma más didáctica de
+demostrar el patrón puertos-y-adaptadores en la defensa.
+
+## D-04 · Puertos transversales: `RealtimePublisher` y `TokenSigner`
+
+**Decisión:** los casos de uso publican eventos con `realtime.publish(topic, payload)`
+y firman tokens con `tokens.sign(payload)` — ambas interfaces en `src/shared/ports/`.
+**Razón:** mejora respecto a la versión NestJS: la capa de aplicación **ni siquiera
+conoce las palabras "socket" o "jwt"**. Socket.IO vive solo en
+`realtime/socketio-realtime.adapter.ts` y jsonwebtoken solo en
+`jwt-token-signer.ts`. En tests se sustituyen por mocks triviales.
+
+## D-05 · Errores tipados + middleware traductor
+
+**Decisión:** jerarquía `AppError` (`BadRequest`, `Unauthorized`, `Forbidden`,
+`NotFound`, `Conflict`) lanzada desde los casos de uso; el middleware
+`errorHandler` los traduce a HTTP en un único lugar.
+**Razón:** los casos de uso expresan fallos de negocio sin conocer códigos HTTP
+ni el objeto `res`. Sustituye a las excepciones de NestJS sin acoplar la
+aplicación a Express. `asyncHandler` propaga rechazos de promesas al handler.
+
+## D-06 · Validación con class-validator vía middleware `validateDto`
+
+**Decisión:** conservar class-validator/class-transformer (los mismos DTOs del
+backend anterior) ejecutados por un middleware Express genérico con
+`whitelist: true` y `forbidNonWhitelisted` para el body.
+**Razón:** sustituye al ValidationPipe de Nest con un mecanismo equivalente de
+~25 líneas; los DTOs son idénticos a los que el frontend Angular ya espera y
+los campos no declarados se rechazan (defensa contra mass assignment).
+
+## D-07 · Autenticación y RBAC como middlewares componibles
+
+**Decisión:** `requireAuth(tokens)` valida el Bearer JWT y puebla `req.user`;
+`requireRoles('administrador', 'abogado')` aplica el control por rol.
+**Razón:** sustituyen a los Guards de Nest. Al ser funciones que reciben el
+puerto `TokenSigner`, son testeables y la matriz de permisos queda legible
+en las propias rutas: `router.post('/', requireRoles('administrador'), …)`.
+
+## D-08 · Controladores delgados: rutas como funciones fábrica
+
+**Decisión:** cada módulo expone `xxxRoutes(deps): Router` que recibe sus casos
+de uso. El handler hace exactamente tres cosas: validar entrada (middleware),
+invocar `useCase.execute()`, serializar la respuesta.
+**Razón:** cero lógica de negocio en HTTP (criterio explícito de la rúbrica) y
+las rutas se montan con dependencias ya resueltas desde el composition root.
+
+## D-09 · Repositorios desacoplados con mappers
+
+**Decisión:** puertos (`UserRepository`, `CaseRepository`…) en domain; adaptadores
+`Mongo*Repository` + schemas + mappers en infrastructure. Colecciones en español
+(`usuarios`, `expedientes`, `solicitudes`…), `contrasena` con `select: false`.
+**Razón:** los documentos Mongoose nunca salen de la capa de persistencia; los
+casos de uso trabajan solo con entidades de dominio. Cambiar Mongo por Postgres
+sería escribir nuevos adaptadores sin tocar aplicación ni dominio.
+
+## D-10 · Composición de casos de uso: aprobar solicitud → crear expediente
+
+**Decisión:** `ResolveRequestUseCase` recibe `CreateCaseUseCase` como dependencia
+y lo invoca al aprobar (vencimiento +90 días, enlaza `expedienteId`).
+**Razón:** la regla "una solicitud aprobada genera expediente" vive en un solo
+lugar; la generación del código `EXP-####` y el evento `case.created` no se
+duplican. Es el flujo crítico del negocio y por eso tiene su propia suite de tests.
+
+## D-11 · Tiempo real sobre el mismo servidor HTTP
+
+**Decisión:** Socket.IO montado sobre el `http.Server` que comparte con Express
+(`server.on('request', app)`), path `/realtime`, 10 eventos de dominio.
+**Razón:** un solo puerto (3000) para REST y WebSocket simplifica CORS, el deploy
+y la conexión del frontend. Eventos: `case.created`, `case.status.changed`,
+`request.created`, `request.resolved`, `document.created`, `event.created`,
+`task.created`, `task.toggled`, `message.sent`, `reports.updated`.
+
+## D-12 · Testing de la capa de aplicación con puertos mockeados
+
+**Decisión:** Jest + ts-jest; 8 tests en 2 suites sobre los módulos críticos:
+`LoginUseCase` (4 escenarios) y `ResolveRequestUseCase` (4 escenarios).
+**Razón:** gracias a la hexagonal, los tests no necesitan Mongo, bcrypt ni
+Express: los puertos se mockean con `jest.fn()`. Son rápidos (<6 s) y prueban
+reglas de negocio reales (credenciales inválidas, usuario inactivo, solicitud
+ya resuelta, creación automática de expediente).
+
+## D-13 · CI/CD con GitHub Actions
+
+**Decisión:** workflow con job `build-and-test` (Node 20: `npm ci` → `npm test`
+→ `npm run build` → artifact) y job `deploy` solo en `main` (webhook de Render
+vía secret; alternativa Railway comentada).
+**Razón:** cumple build automático + ejecución de pruebas; el deploy es opcional
+y no rompe el pipeline si el secret no existe.
+
+---
+
+## Cumplimiento de la rúbrica
+
+| # | Criterio | Dónde se cumple |
+|---|----------|-----------------|
+| 1 | Arquitectura hexagonal (3 pts) | domain/application/infrastructure por módulo + composition root (D-02, D-03) |
+| 2 | Funcionalidades por rol (7 pts) | RBAC con `requireRoles` en 11 módulos; matriz en README §8 (D-07) |
+| 3 | MongoDB con repositorios desacoplados (5 pts) | Puertos + `Mongo*Repository` + mappers; Atlas vía `MONGODB_URI` (D-09) |
+| 4 | Tiempo real (3 pts) | Socket.IO, 10 eventos de dominio, puerto `RealtimePublisher` (D-04, D-11) |
+| 5 | Frontend Angular (7 pts) | Frontend ya entregado; endpoints/contratos idénticos (README §9) |
+| 6 | Backend con casos de uso (3 pts) | 24 casos de uso, un archivo por caso, `execute()` (D-08, D-10) |
+| 7 | Testing (1 pt) | Jest, 8 tests verdes en módulos críticos (D-12) |
+| 8 | CI/CD GitHub Actions (1 pt) | `.github/workflows/ci.yml` (D-13) |

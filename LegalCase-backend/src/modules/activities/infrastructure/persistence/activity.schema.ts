@@ -1,11 +1,15 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument } from 'mongoose';
-export type ActivityDoc = HydratedDocument<ActivityModel>;
-@Schema({ collection: 'actividades', timestamps: true })
-export class ActivityModel {
-  @Prop({ required: true, index: true }) expedienteId!: string;
-  @Prop({ required: true }) tipo!: string;
-  @Prop({ required: true }) descripcion!: string;
-  @Prop({ required: true }) autor!: string;
+import { Schema, model, HydratedDocument } from 'mongoose';
+export interface ActivityRecord {
+  expedienteId: string; tipo: string; descripcion: string; autor: string; createdAt?: Date;
 }
-export const ActivitySchema = SchemaFactory.createForClass(ActivityModel);
+export type ActivityDoc = HydratedDocument<ActivityRecord>;
+const activitySchema = new Schema<ActivityRecord>(
+  {
+    expedienteId: { type: String, required: true, index: true },
+    tipo: { type: String, required: true },
+    descripcion: { type: String, required: true },
+    autor: { type: String, required: true },
+  },
+  { collection: 'actividades', timestamps: true },
+);
+export const ActivityModel = model<ActivityRecord>('Activity', activitySchema);

@@ -1,6 +1,7 @@
 import { AppNotification } from '../entities/notification.entity';
-export abstract class NotificationRepository {
-  abstract findByUser(destinatario: string): Promise<AppNotification[]>;
-  abstract create(n: Omit<AppNotification, 'id' | 'createdAt'>): Promise<AppNotification>;
-  abstract markAllRead(destinatario: string): Promise<number>;
+export type NewNotification = Omit<AppNotification, 'id' | 'createdAt'>;
+export interface NotificationRepository {
+  findByUser(destinatario: string): Promise<AppNotification[]>;
+  create(n: NewNotification): Promise<AppNotification>;
+  markAllRead(destinatario: string): Promise<number>;
 }

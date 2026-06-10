@@ -1,207 +1,176 @@
-# LEXVANTE — Backend (NestJS · Hexagonal · MongoDB)
+# LegalCase Backend — Stack MEAN (MongoDB Atlas · Express · Angular · Node)
 
-API REST + WebSockets del Sistema Web de Gestión de Casos Legales LEXVANTE.
-Construido con **NestJS 10**, **MongoDB/Mongoose**, **JWT**, **Socket.IO**
-y **arquitectura hexagonal** estricta.
+API REST + WebSockets del Sistema Web de Gestión de Casos Legales.
+Construido con **Express + TypeScript**, **MongoDB Atlas/Mongoose**, **JWT**,
+**Socket.IO** y **arquitectura hexagonal** estricta. **Sin NestJS.**
 
 ---
 
 ## 1. Requisitos
 
 - **Node.js 20+** y **npm 9+**
-- **MongoDB 6+** corriendo en `localhost:27017` (o ajustar `MONGODB_URI` en `.env`)
+- **MongoDB Atlas** (recomendado) o MongoDB local
 - Variables de entorno en `.env` (ver `.env.example`)
 
-## 2. Instalación
+## 2. Configurar MongoDB Atlas
+
+1. Crear cuenta gratuita en https://www.mongodb.com/atlas
+2. Crear un cluster M0 (gratis) → **Database Access**: crear usuario y contraseña
+3. **Network Access**: permitir su IP (o `0.0.0.0/0` para desarrollo)
+4. Copiar el *connection string* y pegarlo en `.env`:
+
+```
+MONGODB_URI=mongodb+srv://<usuario>:<password>@<cluster>.mongodb.net/legalcase?retryWrites=true&w=majority
+```
+
+## 3. Instalación y ejecución
 
 ```bash
 npm install
-cp .env.example .env       # ajustar MONGODB_URI y JWT_SECRET
-npm run seed               # carga datos demo y crea los usuarios de prueba
+cp .env.example .env       # pegar el connection string de Atlas y un JWT_SECRET
+npm run seed               # carga datos demo (usuarios, expedientes, solicitudes)
 npm run start:dev          # API en http://localhost:3000/api
 ```
 
 ### Credenciales demo (creadas por el seed)
 
-| Rol           | Correo                  | Contraseña |
-|---------------|-------------------------|------------|
-| Administrador | admin@lexvante.hn       | demo1234   |
-| Abogado       | abogado@lexvante.hn     | demo1234   |
-| Cliente       | cliente@lexvante.hn     | demo1234   |
+| Rol           | Correo                   | Contraseña |
+|---------------|--------------------------|------------|
+| Administrador | admin@legalcase.hn       | demo1234   |
+| Abogado       | abogado@legalcase.hn     | demo1234   |
+| Cliente       | cliente@legalcase.hn     | demo1234   |
 
-## 3. Scripts disponibles
+## 4. Scripts
 
-| Script              | Acción                                          |
-|---------------------|-------------------------------------------------|
-| `npm run start:dev` | Modo desarrollo con hot-reload                  |
-| `npm run build`     | Compila TypeScript a `dist/`                    |
-| `npm run start:prod`| Ejecuta el bundle compilado                     |
-| `npm run seed`      | Pobla la BD con datos demo                      |
-| `npm test`          | Ejecuta pruebas unitarias (Jest)                |
-| `npm run test:cov`  | Tests con reporte de cobertura                  |
-| `npm run lint`      | ESLint                                          |
+| Script              | Acción                                  |
+|---------------------|------------------------------------------|
+| `npm run start:dev` | Desarrollo con hot-reload (ts-node-dev) |
+| `npm run build`     | Compila TypeScript a `dist/`            |
+| `npm run start:prod`| Ejecuta el bundle compilado             |
+| `npm run seed`      | Pobla la BD con datos demo              |
+| `npm test`          | Pruebas unitarias (Jest) — 8 tests      |
+| `npm run test:cov`  | Tests con cobertura                     |
 
 ---
 
-## 4. Arquitectura hexagonal
+## 5. Arquitectura hexagonal
 
-Cada módulo está organizado en tres capas, con dependencias **siempre hacia adentro**
-(infrastructure → application → domain). El dominio no conoce Mongo, Nest, ni HTTP.
+Cada módulo en tres capas, dependencias **siempre hacia adentro**
+(infrastructure → application → domain). El dominio no conoce Mongo, Express ni Socket.IO.
 
 ```
 src/modules/<modulo>/
-├── domain/                       ← núcleo puro, sin frameworks
-│   ├── entities/                 → clases de negocio
-│   └── ports/                    → contratos abstractos (Repository, Hasher…)
-├── application/                  ← orquestación, sin detalles externos
-│   ├── dto/                      → entradas/salidas validadas (class-validator)
-│   └── use-cases/                → un archivo por caso de uso
-└── infrastructure/               ← adaptadores
-    ├── controllers/              → HTTP (Nest controllers)
-    └── persistence/              → Mongoose schemas + repository.impl
+├── domain/                  ← núcleo puro, sin frameworks
+│   ├── entities/             → clases de negocio (User, LegalCase, …)
+│   └── ports/                → contratos (interfaces): Repository, Hasher…
+├── application/             ← orquestación
+│   ├── dto/                  → entradas validadas con class-validator
+│   └── use-cases/            → un archivo por caso de uso, método execute()
+└── infrastructure/          ← adaptadores
+    ├── http/                 → rutas Express (controladores delgados)
+    └── persistence/          → schemas Mongoose + mappers + repos Mongo
 ```
 
-**Inyección de dependencias:** las clases abstractas de los puertos funcionan
-simultáneamente como **interfaz + token**. Cada módulo registra:
+### Composition Root (DI manual)
+
+`src/shared/container.ts` es el **único** lugar donde se conectan puertos con
+adaptadores. Sin contenedor mágico: el grafo de dependencias es explícito y
+verificado por el compilador — si falta una dependencia, TypeScript no compila.
 
 ```ts
-providers: [{ provide: UserRepository, useClass: MongoUserRepository }]
+const userRepo = new MongoUserRepository();
+const login = new LoginUseCase(userRepo, hasher, tokens);
 ```
 
-Los casos de uso reciben la abstracción, no la implementación:
+### Cross-cutting ports (`src/shared/ports`)
 
-```ts
-constructor(@Inject(UserRepository) private readonly users: UserRepository) {}
-```
-
-Beneficio: el dominio queda libre de Mongoose y los casos de uso son
-**testeables sin levantar Mongo ni HTTP** (ver `test/login.use-case.spec.ts`).
+- `RealtimePublisher` — los casos de uso publican eventos sin conocer Socket.IO
+- `TokenSigner` — la aplicación firma/verifica tokens sin conocer jsonwebtoken
 
 ---
 
-## 5. Estructura del proyecto
+## 6. Endpoints
 
-```
-src/
-├── main.ts                       # bootstrap (ValidationPipe, filtros, CORS, /api)
-├── app.module.ts                 # composición raíz
-├── config/configuration.ts       # env → typed config
-├── shared/
-│   ├── filters/                  # AllExceptionsFilter
-│   ├── decorators/               # @CurrentUser, @Roles
-│   ├── guards/                   # RolesGuard (RBAC)
-│   └── pipes/                    # ObjectIdPipe
-├── realtime/                     # WebSocket Gateway (Socket.IO) — global
-│   ├── realtime.gateway.ts
-│   └── realtime.service.ts       # publish() inyectado por los use cases
-└── modules/
-    ├── auth/                     # Login + JWT + Passport (hexagonal completo)
-    ├── users/                    # CRUD usuarios + roles
-    ├── requests/                 # Solicitudes legales → aprobar → expediente
-    ├── cases/                    # Expedientes (entidad central)
-    ├── documents/                # Documentos por expediente
-    ├── events/                   # Calendario (audiencias, reuniones)
-    ├── tasks/                    # Tareas asignadas a abogados
-    ├── messages/                 # Chat cliente ↔ abogado
-    ├── notifications/            # Notificaciones por usuario
-    ├── activities/               # Bitácora de actividad por expediente
-    └── reports/                  # KPIs agregados (cross-repository)
-```
+Prefijo global **`/api`**. Rutas privadas requieren `Authorization: Bearer <jwt>`.
 
----
-
-## 6. Endpoints principales
-
-Prefijo global **`/api`**. Todas las rutas privadas requieren `Authorization: Bearer <jwt>`.
-
-### Auth (público)
+### Auth
 - `POST /api/auth/login` — `{ correo, contrasena }` → `{ token, user }`
-- `GET  /api/auth/me` — devuelve el payload del JWT actual
+- `GET  /api/auth/me` — payload del JWT actual
 
-### Solicitudes (Cliente / Administrador)
-- `POST  /api/requests` — **público**, cliente envía consulta legal
-- `GET   /api/requests?estado=Pendiente` — solo administrador
-- `PATCH /api/requests/:id/resolve` — administrador: `{ estado, motivo? }`
-  - Si `estado === 'Aprobada'`, **crea el expediente automáticamente**
+### Solicitudes
+- `POST  /api/requests` — **público** (cliente envía consulta legal, genera SOL-###)
+- `GET   /api/requests?estado=Pendiente` — admin
+- `PATCH /api/requests/:id/resolve` — admin; si `Aprobada` → **crea expediente automáticamente**
 
-### Expedientes (RBAC por endpoint)
-- `GET   /api/cases` — todos los roles (con filtros: `estado`, `prioridad`, `q`, …)
+### Expedientes
+- `GET   /api/cases` — todos los roles; filtros `estado, prioridad, abogado, cliente, q`
 - `GET   /api/cases/:id`
-- `POST  /api/cases` — solo administrador
-- `PATCH /api/cases/:id/status` — administrador/abogado
+- `POST  /api/cases` — admin (genera EXP-####)
+- `PATCH /api/cases/:id/status` — admin/abogado (tablero Kanban)
 
-### Otros módulos
-- `GET/POST/DELETE /api/documents`
-- `GET/POST/DELETE /api/events`
-- `GET/POST/PATCH  /api/tasks` (incluye `PATCH /tasks/:id/toggle`)
-- `GET/POST        /api/messages`
-- `GET/PATCH       /api/notifications` (`read-all`)
-- `GET             /api/activities` y `/api/activities/case/:id`
-- `GET             /api/reports/dashboard` — solo administrador
+### Resto de módulos
+- `GET/POST/DELETE /api/documents` · `GET/POST/DELETE /api/events`
+- `GET/POST /api/tasks` + `PATCH /api/tasks/:id/toggle`
+- `GET /api/messages/:expedienteId` · `POST /api/messages`
+- `GET /api/notifications` · `PATCH /api/notifications/read-all`
+- `GET /api/activities?limit=10` · `GET /api/activities/case/:id`
+- `GET /api/reports/dashboard` — admin (KPIs agregados)
+- `GET /api/health` — health check
 
 ---
 
 ## 7. Tiempo real (Socket.IO)
 
-WebSocket en `ws://localhost:3000/realtime`. El backend emite eventos al modificar
-el dominio y el frontend Angular se suscribe para refrescar el tablero, los reportes
-y los listados sin recargar.
+WebSocket en `ws://localhost:3000` con `path: '/realtime'`.
 
-| Evento                | Cuándo se emite                                     |
-|-----------------------|-----------------------------------------------------|
-| `case.created`        | Se crea un expediente                               |
-| `case.status.changed` | Cambia el estado de un expediente (tablero Kanban)  |
-| `request.created`     | Cliente envía una solicitud                         |
-| `request.resolved`    | Admin aprueba / rechaza solicitud                   |
-| `document.created`    | Se sube un documento                                |
-| `event.created`       | Nueva audiencia / reunión en el calendario          |
-| `task.created` / `task.toggled` | Tareas creadas o marcadas como completadas |
-| `message.sent`        | Mensaje enviado en el chat                          |
-| `reports.updated`     | Recalculo del dashboard de KPIs                     |
+| Evento                | Cuándo                                            |
+|-----------------------|---------------------------------------------------|
+| `case.created`        | Se crea un expediente                             |
+| `case.status.changed` | Cambia el estado (tablero Kanban en vivo)         |
+| `request.created`     | Cliente envía solicitud                           |
+| `request.resolved`    | Admin aprueba/rechaza                             |
+| `document.created`    | Documento subido                                  |
+| `event.created`       | Nueva audiencia/reunión                           |
+| `task.created` / `task.toggled` | Tareas                                  |
+| `message.sent`        | Chat                                              |
+| `reports.updated`     | KPIs del dashboard recalculados                   |
 
-El `RealtimeService` es inyectado por los **casos de uso**, no por los controladores,
-para que la capa de aplicación no dependa del transporte WebSocket directamente.
+Conexión desde Angular:
+```ts
+import { io } from 'socket.io-client';
+const socket = io('http://localhost:3000', { path: '/realtime' });
+socket.on('case.status.changed', (data) => { /* refrescar Kanban */ });
+```
 
 ---
 
 ## 8. RBAC (control por rol)
 
-| Acción                                | Administrador | Abogado | Cliente |
-|---------------------------------------|:-:|:-:|:-:|
-| Crear usuarios                        | ✅ |   |   |
-| Crear expediente                      | ✅ |   |   |
-| Resolver solicitud                    | ✅ |   |   |
-| Cambiar estado de expediente          | ✅ | ✅ |   |
-| Crear/listar tareas                   | ✅ | ✅ |   |
-| Subir documentos                      | ✅ | ✅ |   |
-| Ver expedientes / mensajes            | ✅ | ✅ | ✅ |
-| Enviar mensajes                       | ✅ | ✅ | ✅ |
-| Enviar solicitud legal (público)      |   |   | ✅ |
-| Dashboard de reportes                 | ✅ |   |   |
+| Acción                          | Admin | Abogado | Cliente |
+|---------------------------------|:-:|:-:|:-:|
+| Crear usuarios / expedientes    | ✅ |   |   |
+| Resolver solicitudes / reportes | ✅ |   |   |
+| Cambiar estado / tareas / docs  | ✅ | ✅ |   |
+| Ver expedientes / chat          | ✅ | ✅ | ✅ |
+| Enviar solicitud (público)      |   |   | ✅ |
 
-Implementado con `@Roles(...)` + `RolesGuard` global que lee el rol del JWT.
+Implementado con `requireAuth(tokens)` + `requireRoles(...)` (middleware Express).
 
 ---
 
 ## 9. Conexión con el frontend Angular
 
-1. El frontend (proyecto separado, ya entregado) usa `environment.apiUrl`.
-   Cambiar a `http://localhost:3000/api`.
-2. En `AuthService.login()` descomentar la llamada real `this.api.post('auth/login', creds)`.
-3. El `jwtInterceptor` ya adjunta `Authorization: Bearer <token>`.
-4. El `errorInterceptor` cierra sesión ante 401.
+1. `environment.ts` → `apiUrl: 'http://localhost:3000/api'`
+2. En `AuthService.login()` activar la llamada real `this.api.post('auth/login', …)`
+3. El `jwtInterceptor` ya adjunta el `Bearer token`; el `errorInterceptor` maneja el 401
 
-No se requiere tocar guards, store, layouts ni componentes del frontend.
+Los endpoints, formatos de respuesta, roles y eventos en tiempo real son
+idénticos a los que el frontend ya espera.
 
 ---
 
-## 10. CI/CD
+## 10. CI/CD (GitHub Actions)
 
-`.github/workflows/ci.yml` ejecuta en cada push/PR:
-
-1. `npm ci` — instalación reproducible
-2. `npm test` — pruebas unitarias
-3. `npm run build` — compilación TypeScript
-4. **Upload artifact** del bundle compilado
-5. **Deploy** (solo `main`): trigger del webhook de Render con el secret
-   `RENDER_DEPLOY_HOOK_URL` (alternativa Railway comentada en el workflow).
+`.github/workflows/ci.yml`: en cada push/PR ejecuta `npm ci` → `npm test` →
+`npm run build` → sube el artifact; en `main` añade deploy vía webhook de Render
+(secret `RENDER_DEPLOY_HOOK_URL`; alternativa Railway comentada).

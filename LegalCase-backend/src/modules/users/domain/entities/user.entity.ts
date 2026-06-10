@@ -1,9 +1,9 @@
 export type Role = 'administrador' | 'abogado' | 'cliente';
 
 /**
- * Entidad de dominio User.
- * Es una clase plana, sin framework. Representa las reglas e invariantes
- * de un usuario; la persistencia y validación HTTP viven en otras capas.
+ * Entidad de dominio User: clase plana, sin framework.
+ * Las reglas e invariantes del usuario viven aquí; la persistencia
+ * y la validación HTTP viven en otras capas.
  */
 export class User {
   constructor(
@@ -21,9 +21,9 @@ export class User {
   ) {}
 
   /** Vista pública: nunca expone la contraseña. */
-  toPublic() {
-    const { contrasena, ...rest } = this;
+  toPublic(): Omit<User, 'contrasena' | 'toPublic'> {
+    const { contrasena, ...rest } = this as User & { contrasena?: string };
     void contrasena;
-    return rest;
+    return rest as Omit<User, 'contrasena' | 'toPublic'>;
   }
 }

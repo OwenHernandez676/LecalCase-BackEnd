@@ -1,14 +1,13 @@
 import { Role, User } from '../entities/user.entity';
 
-/**
- * Puerto de salida: contrato que el dominio espera de la persistencia.
- * Las implementaciones concretas viven en infrastructure/persistence.
- */
-export abstract class UserRepository {
-  abstract findById(id: string): Promise<User | null>;
-  abstract findByEmail(correo: string): Promise<User | null>;
-  abstract findAll(filter?: { rol?: Role }): Promise<User[]>;
-  abstract create(user: Omit<User, 'id' | 'toPublic'>): Promise<User>;
-  abstract update(id: string, patch: Partial<User>): Promise<User | null>;
-  abstract setActive(id: string, activo: boolean): Promise<User | null>;
+export type NewUser = Omit<User, 'id' | 'createdAt' | 'updatedAt' | 'toPublic'>;
+
+/** Puerto de salida: contrato que el dominio espera de la persistencia. */
+export interface UserRepository {
+  findById(id: string): Promise<User | null>;
+  findByEmail(correo: string): Promise<User | null>;
+  findAll(filter?: { rol?: Role }): Promise<User[]>;
+  create(user: NewUser): Promise<User>;
+  update(id: string, patch: Partial<User>): Promise<User | null>;
+  setActive(id: string, activo: boolean): Promise<User | null>;
 }

@@ -1,15 +1,13 @@
-import { Inject, Injectable } from '@nestjs/common';
 import { EventRepository } from '../../domain/ports/event.repository';
+import { RealtimePublisher } from '../../../../shared/ports/realtime-publisher.port';
 import { CreateEventDto } from '../dto/create-event.dto';
-import { RealtimeService } from '../../../../realtime/realtime.service';
-@Injectable()
 export class CreateEventUseCase {
-  constructor(
-    @Inject(EventRepository) private readonly repo: EventRepository,
-    private readonly realtime: RealtimeService,
-  ) {}
+  constructor(private readonly repo: EventRepository, private readonly realtime: RealtimePublisher) {}
   async execute(dto: CreateEventDto) {
-    const created = await this.repo.create({ ...dto, fecha: new Date(dto.fecha) } as any);
+    const created = await this.repo.create({
+      titulo: dto.titulo, tipo: dto.tipo, fecha: new Date(dto.fecha),
+      expedienteId: dto.expedienteId, descripcion: dto.descripcion,
+    });
     this.realtime.publish('event.created', created);
     return created;
   }

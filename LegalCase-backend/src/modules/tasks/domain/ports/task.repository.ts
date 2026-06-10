@@ -1,6 +1,7 @@
 import { LegalTask } from '../entities/task.entity';
-export abstract class TaskRepository {
-  abstract findAll(asignadoA?: string): Promise<LegalTask[]>;
-  abstract create(t: Omit<LegalTask, 'id' | 'createdAt'>): Promise<LegalTask>;
-  abstract toggle(id: string): Promise<LegalTask | null>;
+export type NewTask = Omit<LegalTask, 'id' | 'createdAt'>;
+export interface TaskRepository {
+  findAll(asignadoA?: string): Promise<LegalTask[]>;
+  create(t: NewTask): Promise<LegalTask>;
+  toggle(id: string): Promise<LegalTask | null>;
 }

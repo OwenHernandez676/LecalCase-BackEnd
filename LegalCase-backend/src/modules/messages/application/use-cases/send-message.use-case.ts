@@ -1,15 +1,10 @@
-import { Inject, Injectable } from '@nestjs/common';
 import { MessageRepository } from '../../domain/ports/message.repository';
+import { RealtimePublisher } from '../../../../shared/ports/realtime-publisher.port';
 import { SendMessageDto } from '../dto/send-message.dto';
-import { RealtimeService } from '../../../../realtime/realtime.service';
-@Injectable()
 export class SendMessageUseCase {
-  constructor(
-    @Inject(MessageRepository) private readonly repo: MessageRepository,
-    private readonly realtime: RealtimeService,
-  ) {}
+  constructor(private readonly repo: MessageRepository, private readonly realtime: RealtimePublisher) {}
   async execute(dto: SendMessageDto) {
-    const m = await this.repo.create({ ...dto, leido: false } as any);
+    const m = await this.repo.create({ ...dto, leido: false });
     this.realtime.publish('message.sent', m);
     return m;
   }

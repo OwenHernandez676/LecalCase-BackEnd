@@ -1,12 +1,16 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument } from 'mongoose';
+import { Schema, model, HydratedDocument } from 'mongoose';
 import { NotificationType } from '../../domain/entities/notification.entity';
-export type NotifDoc = HydratedDocument<NotifModel>;
-@Schema({ collection: 'notificaciones', timestamps: true })
-export class NotifModel {
-  @Prop({ required: true, index: true }) destinatario!: string;
-  @Prop({ required: true, enum: ['comentario', 'audiencia', 'documento', 'estado', 'solicitud'] }) tipo!: NotificationType;
-  @Prop({ required: true }) mensaje!: string;
-  @Prop({ default: false, index: true }) leida!: boolean;
+export interface NotificationRecord {
+  destinatario: string; tipo: NotificationType; mensaje: string; leida: boolean; createdAt?: Date;
 }
-export const NotifSchema = SchemaFactory.createForClass(NotifModel);
+export type NotificationDoc = HydratedDocument<NotificationRecord>;
+const notificationSchema = new Schema<NotificationRecord>(
+  {
+    destinatario: { type: String, required: true, index: true },
+    tipo: { type: String, required: true, enum: ['comentario', 'audiencia', 'documento', 'estado', 'solicitud'] },
+    mensaje: { type: String, required: true },
+    leida: { type: Boolean, default: false, index: true },
+  },
+  { collection: 'notificaciones', timestamps: true },
+);
+export const NotificationModel = model<NotificationRecord>('Notification', notificationSchema);

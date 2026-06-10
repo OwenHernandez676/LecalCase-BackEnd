@@ -1,6 +1,7 @@
 import { CalendarEvent } from '../entities/event.entity';
-export abstract class EventRepository {
-  abstract findAll(from?: Date, to?: Date): Promise<CalendarEvent[]>;
-  abstract create(e: Omit<CalendarEvent, 'id' | 'createdAt'>): Promise<CalendarEvent>;
-  abstract remove(id: string): Promise<boolean>;
+export type NewEvent = Omit<CalendarEvent, 'id' | 'createdAt'>;
+export interface EventRepository {
+  findAll(from?: Date, to?: Date): Promise<CalendarEvent[]>;
+  create(e: NewEvent): Promise<CalendarEvent>;
+  remove(id: string): Promise<boolean>;
 }

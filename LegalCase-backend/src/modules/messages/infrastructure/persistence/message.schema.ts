@@ -1,12 +1,17 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument } from 'mongoose';
-export type MessageDoc = HydratedDocument<MessageModel>;
-@Schema({ collection: 'mensajes', timestamps: true })
-export class MessageModel {
-  @Prop({ required: true, index: true }) expedienteId!: string;
-  @Prop({ required: true }) emisor!: string;
-  @Prop({ required: true, index: true }) receptor!: string;
-  @Prop({ required: true }) texto!: string;
-  @Prop({ default: false, index: true }) leido!: boolean;
+import { Schema, model, HydratedDocument } from 'mongoose';
+export interface MessageRecord {
+  expedienteId: string; emisor: string; receptor: string;
+  texto: string; leido: boolean; createdAt?: Date;
 }
-export const MessageSchema = SchemaFactory.createForClass(MessageModel);
+export type MessageDoc = HydratedDocument<MessageRecord>;
+const messageSchema = new Schema<MessageRecord>(
+  {
+    expedienteId: { type: String, required: true, index: true },
+    emisor: { type: String, required: true },
+    receptor: { type: String, required: true, index: true },
+    texto: { type: String, required: true },
+    leido: { type: Boolean, default: false, index: true },
+  },
+  { collection: 'mensajes', timestamps: true },
+);
+export const MessageModel = model<MessageRecord>('Message', messageSchema);

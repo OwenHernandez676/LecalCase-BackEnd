@@ -1,5 +1,6 @@
 import { ChatMessage } from '../entities/message.entity';
-export abstract class MessageRepository {
-  abstract findByCase(expedienteId: string): Promise<ChatMessage[]>;
-  abstract create(m: Omit<ChatMessage, 'id' | 'createdAt'>): Promise<ChatMessage>;
+export type NewMessage = Omit<ChatMessage, 'id' | 'createdAt'>;
+export interface MessageRepository {
+  findByCase(expedienteId: string): Promise<ChatMessage[]>;
+  create(m: NewMessage): Promise<ChatMessage>;
 }

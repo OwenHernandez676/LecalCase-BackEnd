@@ -1,12 +1,17 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument } from 'mongoose';
-export type EventDoc = HydratedDocument<EventModel>;
-@Schema({ collection: 'eventos', timestamps: true })
-export class EventModel {
-  @Prop({ required: true }) titulo!: string;
-  @Prop({ required: true, enum: ['Audiencia', 'Reunión', 'Vencimiento'] }) tipo!: 'Audiencia' | 'Reunión' | 'Vencimiento';
-  @Prop({ required: true, index: true }) fecha!: Date;
-  @Prop({ index: true }) expedienteId?: string;
-  @Prop() descripcion?: string;
+import { Schema, model, HydratedDocument } from 'mongoose';
+export interface EventRecord {
+  titulo: string; tipo: 'Audiencia' | 'Reunión' | 'Vencimiento'; fecha: Date;
+  expedienteId?: string; descripcion?: string; createdAt?: Date;
 }
-export const EventSchema = SchemaFactory.createForClass(EventModel);
+export type EventDoc = HydratedDocument<EventRecord>;
+const eventSchema = new Schema<EventRecord>(
+  {
+    titulo: { type: String, required: true },
+    tipo: { type: String, required: true, enum: ['Audiencia', 'Reunión', 'Vencimiento'] },
+    fecha: { type: Date, required: true, index: true },
+    expedienteId: { type: String, index: true },
+    descripcion: { type: String },
+  },
+  { collection: 'eventos', timestamps: true },
+);
+export const EventModel = model<EventRecord>('Event', eventSchema);
