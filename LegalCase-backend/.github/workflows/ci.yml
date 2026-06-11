@@ -28,14 +28,17 @@ jobs:
       - name: Run unit tests
         run: npm test -- --ci --reporters=default
 
-      - name: Compile TypeScript
+      - name: Check JavaScript syntax (build)
         run: npm run build
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: legalcase-backend-dist
-          path: dist/
+          name: legalcase-backend
+          path: |
+            src/
+            package.json
+            package-lock.json
           retention-days: 7
 
   deploy:
@@ -51,8 +54,8 @@ jobs:
       - name: Download build artifact
         uses: actions/download-artifact@v4
         with:
-          name: legalcase-backend-dist
-          path: dist/
+          name: legalcase-backend
+          path: build/
 
       # Render: requiere RENDER_DEPLOY_HOOK_URL en GitHub Secrets.
       - name: Trigger Render deploy

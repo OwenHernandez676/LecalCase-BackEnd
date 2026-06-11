@@ -1,52 +1,36 @@
 {
   "name": "legalcase-backend",
   "version": "1.0.0",
-  "description": "LegalCase Backend — API Express + TypeScript (MEAN, arquitectura hexagonal)",
+  "description": "LegalCase Backend — API Express + JavaScript/Node.js (MEAN, arquitectura hexagonal)",
   "private": true,
-  "main": "dist/index.js",
+  "main": "src/index.js",
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
-    "start": "node dist/index.js",
-    "start:dev": "ts-node-dev --respawn --transpile-only -r tsconfig-paths/register src/index.ts",
-    "start:prod": "node dist/index.js",
-    "seed": "ts-node -r tsconfig-paths/register src/database/seed.ts",
+    "start": "node src/index.js",
+    "start:dev": "node --watch src/index.js",
+    "start:prod": "node src/index.js",
+    "build": "node scripts/check-syntax.js",
+    "seed": "node src/database/seed.js",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
-    "lint": "echo 'lint placeholder'"
+    "lint": "node scripts/check-syntax.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
-    "class-transformer": "^0.5.1",
-    "class-validator": "^0.14.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.2.0",
-    "reflect-metadata": "^0.2.1",
     "socket.io": "^4.7.4"
   },
   "devDependencies": {
-    "@types/bcryptjs": "^2.4.6",
-    "@types/cors": "^2.8.17",
-    "@types/express": "^4.17.21",
-    "@types/jest": "^29.5.12",
-    "@types/jsonwebtoken": "^9.0.6",
-    "@types/node": "^20.11.0",
-    "jest": "^29.7.0",
-    "ts-jest": "^29.1.2",
-    "ts-node": "^10.9.2",
-    "ts-node-dev": "^2.0.0",
-    "tsconfig-paths": "^4.2.0",
-    "typescript": "^5.3.3"
+    "jest": "^29.7.0"
   },
   "jest": {
-    "moduleFileExtensions": ["js", "json", "ts"],
     "rootDir": ".",
-    "testRegex": ".*\\.spec\\.ts$",
-    "transform": { "^.+\\.(t|j)s$": "ts-jest" },
-    "collectCoverageFrom": ["src/**/*.ts"],
+    "testRegex": ".*\\.spec\\.js$",
+    "collectCoverageFrom": ["src/**/*.js"],
     "coverageDirectory": "./coverage",
     "testEnvironment": "node"
   }

@@ -1,8 +1,8 @@
 # LegalCase Backend — Stack MEAN (MongoDB Atlas · Express · Angular · Node)
 
 API REST + WebSockets del Sistema Web de Gestión de Casos Legales.
-Construido con **Express + TypeScript**, **MongoDB Atlas/Mongoose**, **JWT**,
-**Socket.IO** y **arquitectura hexagonal** estricta. **Sin NestJS.**
+Construido con **Express + JavaScript puro (Node.js)**, **MongoDB Atlas/Mongoose**,
+**JWT**, **Socket.IO** y **arquitectura hexagonal** estricta. **Sin NestJS, sin TypeScript.**
 
 ---
 
@@ -42,14 +42,16 @@ npm run start:dev          # API en http://localhost:3000/api
 
 ## 4. Scripts
 
-| Script              | Acción                                  |
-|---------------------|------------------------------------------|
-| `npm run start:dev` | Desarrollo con hot-reload (ts-node-dev) |
-| `npm run build`     | Compila TypeScript a `dist/`            |
-| `npm run start:prod`| Ejecuta el bundle compilado             |
-| `npm run seed`      | Pobla la BD con datos demo              |
-| `npm test`          | Pruebas unitarias (Jest) — 8 tests      |
-| `npm run test:cov`  | Tests con cobertura                     |
+| Script              | Acción                                        |
+|---------------------|-----------------------------------------------|
+| `npm start`         | Ejecuta la API con Node (`node src/index.js`) |
+| `npm run start:dev` | Desarrollo con hot-reload (`node --watch`)    |
+| `npm run build`     | Verifica la sintaxis de todos los .js         |
+| `npm run seed`      | Pobla la BD con datos demo                    |
+| `npm test`          | Pruebas unitarias (Jest)                      |
+| `npm run test:cov`  | Tests con cobertura                           |
+
+Sin transpiladores: el código corre directo sobre Node.js.
 
 ---
 
@@ -62,9 +64,9 @@ Cada módulo en tres capas, dependencias **siempre hacia adentro**
 src/modules/<modulo>/
 ├── domain/                  ← núcleo puro, sin frameworks
 │   ├── entities/             → clases de negocio (User, LegalCase, …)
-│   └── ports/                → contratos (interfaces): Repository, Hasher…
+│   └── ports/                → contratos documentados con JSDoc: Repository, Hasher…
 ├── application/             ← orquestación
-│   ├── dto/                  → entradas validadas con class-validator
+│   ├── dto/                  → esquemas de entrada validados por el middleware
 │   └── use-cases/            → un archivo por caso de uso, método execute()
 └── infrastructure/          ← adaptadores
     ├── http/                 → rutas Express (controladores delgados)
@@ -73,11 +75,11 @@ src/modules/<modulo>/
 
 ### Composition Root (DI manual)
 
-`src/shared/container.ts` es el **único** lugar donde se conectan puertos con
-adaptadores. Sin contenedor mágico: el grafo de dependencias es explícito y
-verificado por el compilador — si falta una dependencia, TypeScript no compila.
+`src/shared/container.js` es el **único** lugar donde se conectan puertos con
+adaptadores. Sin contenedor mágico: el grafo de dependencias es explícito,
+visible y navegable.
 
-```ts
+```js
 const userRepo = new MongoUserRepository();
 const login = new LoginUseCase(userRepo, hasher, tokens);
 ```
@@ -86,6 +88,12 @@ const login = new LoginUseCase(userRepo, hasher, tokens);
 
 - `RealtimePublisher` — los casos de uso publican eventos sin conocer Socket.IO
 - `TokenSigner` — la aplicación firma/verifica tokens sin conocer jsonwebtoken
+
+### Validación de DTOs (`src/shared/validation`)
+
+Mini-librería propia en JavaScript puro (reemplaza a class-validator): cada DTO
+declara un esquema plano y el middleware `validateDto` lo valida con whitelist,
+campos extra prohibidos en body y coerción de tipos en query.
 
 ---
 
@@ -172,5 +180,6 @@ idénticos a los que el frontend ya espera.
 ## 10. CI/CD (GitHub Actions)
 
 `.github/workflows/ci.yml`: en cada push/PR ejecuta `npm ci` → `npm test` →
-`npm run build` → sube el artifact; en `main` añade deploy vía webhook de Render
-(secret `RENDER_DEPLOY_HOOK_URL`; alternativa Railway comentada).
+`npm run build` (verificación de sintaxis) → sube el artifact; en `main`
+añade deploy vía webhook de Render (secret `RENDER_DEPLOY_HOOK_URL`;
+alternativa Railway comentada).
