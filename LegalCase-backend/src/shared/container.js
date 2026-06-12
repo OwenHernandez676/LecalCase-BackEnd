@@ -8,7 +8,6 @@ const { MongoCaseRepository } = require('../modules/cases/infrastructure/persist
 const { MongoRequestRepository } = require('../modules/requests/infrastructure/persistence/mongo-request.repository');
 const { MongoDocumentRepository } = require('../modules/documents/infrastructure/persistence/mongo-document.repository');
 const { MongoEventRepository } = require('../modules/events/infrastructure/persistence/mongo-event.repository');
-const { MongoTaskRepository } = require('../modules/tasks/infrastructure/persistence/mongo-task.repository');
 const { MongoMessageRepository } = require('../modules/messages/infrastructure/persistence/mongo-message.repository');
 const { MongoNotificationRepository } = require('../modules/notifications/infrastructure/persistence/mongo-notification.repository');
 const { MongoActivityRepository } = require('../modules/activities/infrastructure/persistence/mongo-activity.repository');
@@ -32,17 +31,12 @@ const { DeleteDocumentUseCase } = require('../modules/documents/application/use-
 const { ListEventsUseCase } = require('../modules/events/application/use-cases/list-events.use-case');
 const { CreateEventUseCase } = require('../modules/events/application/use-cases/create-event.use-case');
 const { DeleteEventUseCase } = require('../modules/events/application/use-cases/delete-event.use-case');
-const { ListTasksUseCase } = require('../modules/tasks/application/use-cases/list-tasks.use-case');
-const { CreateTaskUseCase } = require('../modules/tasks/application/use-cases/create-task.use-case');
-const { ToggleTaskUseCase } = require('../modules/tasks/application/use-cases/toggle-task.use-case');
 const { SendMessageUseCase } = require('../modules/messages/application/use-cases/send-message.use-case');
 const { ListMessagesUseCase } = require('../modules/messages/application/use-cases/list-messages.use-case');
 const { ListNotificationsUseCase } = require('../modules/notifications/application/use-cases/list-notifications.use-case');
 const { MarkAllReadUseCase } = require('../modules/notifications/application/use-cases/mark-all-read.use-case');
 const { ListRecentActivitiesUseCase } = require('../modules/activities/application/use-cases/list-recent-activities.use-case');
 const { ListCaseActivitiesUseCase } = require('../modules/activities/application/use-cases/list-case-activities.use-case');
-const { DashboardReportUseCase } = require('../modules/reports/application/use-cases/dashboard-report.use-case');
-
 /**
  * COMPOSITION ROOT — Inyección de dependencias manual y explícita.
  *
@@ -66,7 +60,6 @@ function buildContainer(realtime) {
   const requestRepo = new MongoRequestRepository();
   const documentRepo = new MongoDocumentRepository();
   const eventRepo = new MongoEventRepository();
-  const taskRepo = new MongoTaskRepository();
   const messageRepo = new MongoMessageRepository();
   const notificationRepo = new MongoNotificationRepository();
   const activityRepo = new MongoActivityRepository();
@@ -107,11 +100,6 @@ function buildContainer(realtime) {
       createEvent: new CreateEventUseCase(eventRepo, realtime),
       deleteEvent: new DeleteEventUseCase(eventRepo),
     },
-    tasks: {
-      listTasks: new ListTasksUseCase(taskRepo),
-      createTask: new CreateTaskUseCase(taskRepo, realtime),
-      toggleTask: new ToggleTaskUseCase(taskRepo, realtime),
-    },
     messages: {
       sendMsg: new SendMessageUseCase(messageRepo, realtime),
       listMsgs: new ListMessagesUseCase(messageRepo),
@@ -123,9 +111,6 @@ function buildContainer(realtime) {
     activities: {
       listRecent: new ListRecentActivitiesUseCase(activityRepo),
       listByCase: new ListCaseActivitiesUseCase(activityRepo),
-    },
-    reports: {
-      dashboard: new DashboardReportUseCase(caseRepo, requestRepo, userRepo, realtime),
     },
   };
 }

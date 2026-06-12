@@ -9,12 +9,9 @@ const { requestsRoutes } = require('./modules/requests/infrastructure/http/reque
 const { casesRoutes } = require('./modules/cases/infrastructure/http/cases.routes');
 const { documentsRoutes } = require('./modules/documents/infrastructure/http/documents.routes');
 const { eventsRoutes } = require('./modules/events/infrastructure/http/events.routes');
-const { tasksRoutes } = require('./modules/tasks/infrastructure/http/tasks.routes');
 const { messagesRoutes } = require('./modules/messages/infrastructure/http/messages.routes');
 const { notificationsRoutes } = require('./modules/notifications/infrastructure/http/notifications.routes');
 const { activitiesRoutes } = require('./modules/activities/infrastructure/http/activities.routes');
-const { reportsRoutes } = require('./modules/reports/infrastructure/http/reports.routes');
-
 /**
  * Fábrica de la aplicación Express.
  * Recibe el contenedor con los casos de uso ya cableados y monta las rutas.
@@ -36,11 +33,9 @@ function createApp(c) {
   app.use('/api/cases', casesRoutes({ ...c.cases, tokens: c.tokens }));
   app.use('/api/documents', documentsRoutes({ ...c.documents, tokens: c.tokens }));
   app.use('/api/events', eventsRoutes({ ...c.events, tokens: c.tokens }));
-  app.use('/api/tasks', tasksRoutes({ ...c.tasks, tokens: c.tokens }));
   app.use('/api/messages', messagesRoutes({ ...c.messages, tokens: c.tokens }));
   app.use('/api/notifications', notificationsRoutes({ ...c.notifications, tokens: c.tokens }));
   app.use('/api/activities', activitiesRoutes({ ...c.activities, tokens: c.tokens }));
-  app.use('/api/reports', reportsRoutes({ ...c.reports, tokens: c.tokens }));
 
   app.use((_req, res) => { res.status(404).json({ statusCode: 404, message: 'Ruta no encontrada' }); });
   app.use(errorHandler);
