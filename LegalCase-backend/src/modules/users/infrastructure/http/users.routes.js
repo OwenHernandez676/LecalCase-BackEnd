@@ -24,7 +24,9 @@ function usersRoutes(deps) {
   }));
 
   router.post('/', requireRoles('administrador'), validateDto(CreateUserDto), asyncHandler(async (req, res) => {
-    res.status(201).json((await deps.createUser.execute(req.body)).toPublic());
+    // Onboarding completo: crea la cuenta, genera credenciales, envía correo,
+    // notifica y audita. El actor (admin) se toma del JWT.
+    res.status(201).json((await deps.onboardUser.execute(req.body, req.user.correo)).toPublic());
   }));
 
   router.patch('/:id', requireRoles('administrador'), validateObjectId(), validateDto(UpdateUserDto), asyncHandler(async (req, res) => {

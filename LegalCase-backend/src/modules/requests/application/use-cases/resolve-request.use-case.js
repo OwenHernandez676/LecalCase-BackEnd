@@ -30,8 +30,9 @@ class ResolveRequestUseCase {
    * @param {import('../../../../shared/ports/email-sender.port').EmailSender} email
    * @param {import('../../../../shared/ports/realtime-publisher.port').RealtimePublisher} realtime
    * @param {string} frontendUrl
+   * @param {import('../../../auth/domain/ports/password-hasher.port').PasswordHasher} hasher
    */
-  constructor(requests, createCase, users, createUser, createActivity, notifications, audit, email, realtime, frontendUrl) {
+  constructor(requests, createCase, users, createUser, createActivity, notifications, audit, email, realtime, frontendUrl, hasher) {
     this.requests = requests;
     this.createCase = createCase;
     this.users = users;
@@ -42,6 +43,7 @@ class ResolveRequestUseCase {
     this.email = email;
     this.realtime = realtime;
     this.frontendUrl = frontendUrl;
+    this.hasher = hasher;
   }
 
   async execute(id, dto) {
@@ -69,11 +71,11 @@ class ResolveRequestUseCase {
     }
 
     // ───────────────────────── APROBACIÓN ─────────────────────────
-    // 1. Usuario cliente (crear o reutilizar por correo).
+    // 1. Usuario cliente: crear si no existe; si ya existe, resetear contraseña.
+    //    Siempre generamos una contraseña temporal fresca para poder enviársela por correo.
     let clienteUser = await this.users.findByEmail(current.correo);
-    let tempPassword = null;
+    const tempPassword = generateTempPassword();
     if (!clienteUser) {
-      tempPassword = generateTempPassword();
       clienteUser = await this.createUser.execute({
         nombre: current.cliente,
         correo: current.correo,
@@ -82,54 +84,60 @@ class ResolveRequestUseCase {
         telefono: current.telefono,
         activo: true,
       });
+    } else {
+      // Actualiza la contraseña en BD para que el cliente pueda entrar con las nuevas credenciales.
+      const hash = await this.hasher.hash(tempPassword);
+      await this.users.update(clienteUser.id, { contrasena: hash, activo: true });
     }
 
-    // 2. Expediente, enlazado al cliente y al abogado asignado.
+    // 2. Expediente, enlazado al cliente y al abogado asignado (nombre + id).
     const created = await this.createCase.execute({
       titulo: `${current.tipo} — ${current.cliente}`,
       tipo: current.tipo,
       cliente: current.cliente,
       clienteId: clienteUser.id,
       abogado: dto.abogado,
+      abogadoId: dto.abogadoId,
       prioridad: dto.prioridad ?? current.prioridad,
       fechaVencimiento: new Date(Date.now() + 90 * 86400000).toISOString(),
       descripcion: current.descripcion,
     });
 
-    // 3. Actividad de creación en la línea de tiempo.
+    // 3. Actividad de creación (incluye observaciones del administrador si las hay).
+    const detalleCreacion = dto.observaciones?.trim()
+      ? `Expediente creado a partir de la solicitud ${current.codigo}. Observaciones: ${dto.observaciones.trim()}`
+      : `Expediente creado a partir de la solicitud ${current.codigo}`;
     await this.createActivity.execute({
-      expedienteId: created.id,
-      tipo: 'creacion',
-      descripcion: `Expediente creado a partir de la solicitud ${current.codigo}`,
-      autor: actor,
+      expedienteId: created.id, tipo: 'creacion', descripcion: detalleCreacion, autor: actor,
     });
 
-    // 4. Notificación para el cliente (destinatario = id del usuario cliente).
+    // 4. Notificaciones: al cliente (su expediente) y al abogado (caso asignado).
     try {
       await this.notifications.create({
-        destinatario: clienteUser.id,
-        tipo: 'estado',
+        destinatario: clienteUser.id, tipo: 'estado', leida: false,
         mensaje: `Su solicitud fue aprobada. Se abrió el expediente ${created.codigo}.`,
-        leida: false,
       });
+      if (dto.abogadoId) {
+        await this.notifications.create({
+          destinatario: dto.abogadoId, tipo: 'estado', leida: false,
+          mensaje: `Se le asignó el expediente ${created.codigo} — ${current.cliente}.`,
+        });
+      }
     } catch (e) { console.error('[notif] no se pudo crear la notificación:', e.message); }
 
-    // 5. Correo de bienvenida (solo si se generó una contraseña nueva).
-    let emailResult = { ok: false, skipped: true };
-    if (tempPassword) {
-      const tpl = buildWelcomeClientEmail({
-        nombre: current.cliente,
-        correo: current.correo,
-        contrasena: tempPassword,
-        loginUrl: `${this.frontendUrl}/login`,
-        codigoExpediente: created.codigo,
-      });
-      emailResult = await this.email.send({ to: current.correo, ...tpl });
-      // Fallback operativo: si el SMTP no está configurado, deja las credenciales
-      // en el log del servidor para no bloquear el onboarding del cliente.
-      if (emailResult.skipped) {
-        console.log(`[onboarding] Cuenta de cliente lista — correo: ${current.correo} · contraseña temporal: ${tempPassword}`);
-      }
+    // 5. Correo de bienvenida con credenciales (siempre: cliente nuevo o existente con password reset).
+    const tpl = buildWelcomeClientEmail({
+      nombre: current.cliente,
+      correo: current.correo,
+      contrasena: tempPassword,
+      loginUrl: `${this.frontendUrl}/login`,
+      codigoExpediente: created.codigo,
+    });
+    // Siempre imprime las credenciales en consola — fallback si el correo falla o va a spam.
+    console.log(`[onboarding] 📧 Cuenta CLIENTE — correo: ${current.correo} · contraseña: ${tempPassword}`);
+    const emailResult = await this.email.send({ to: current.correo, ...tpl });
+    if (!emailResult.ok && !emailResult.skipped) {
+      console.warn(`[onboarding] ⚠️  El correo al cliente falló. Usa las credenciales de consola.`);
     }
 
     // 6. Trazabilidad de la operación completa.
@@ -142,7 +150,9 @@ class ResolveRequestUseCase {
         clienteUserId: clienteUser.id,
         expedienteId: created.id,
         abogado: dto.abogado ?? null,
-        cuentaCreada: !!tempPassword,
+        abogadoId: dto.abogadoId ?? null,
+        observaciones: dto.observaciones ?? null,
+        cuentaCreada: true,
         correoEnviado: !!emailResult.ok,
       },
     });

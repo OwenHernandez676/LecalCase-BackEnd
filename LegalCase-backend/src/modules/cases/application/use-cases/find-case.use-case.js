@@ -12,8 +12,11 @@ class FindCaseUseCase {
   async execute(id, user) {
     const c = await this.cases.findById(id);
     if (!c) throw new NotFoundError('Expediente no encontrado');
-    // Aislamiento: un cliente solo puede consultar SUS expedientes.
+    // Aislamiento: cliente solo SUS expedientes; abogado solo los asignados a él.
     if (user && user.rol === 'cliente' && c.clienteId !== user.sub) {
+      throw new NotFoundError('Expediente no encontrado');
+    }
+    if (user && user.rol === 'abogado' && c.abogadoId !== user.sub) {
       throw new NotFoundError('Expediente no encontrado');
     }
     return c;

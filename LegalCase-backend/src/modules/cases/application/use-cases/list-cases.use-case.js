@@ -14,10 +14,10 @@ class ListCasesUseCase {
    * @param {{ sub: string, rol: string }} [user] Usuario autenticado (del JWT).
    */
   execute(filter, user) {
-    if (user && user.rol === 'cliente') {
-      return this.cases.findAll({ clienteId: user.sub });
-    }
-    return this.cases.findAll(filter);
+    // Aislamiento por rol (en la capa de aplicación, no en el frontend):
+    if (user && user.rol === 'cliente') return this.cases.findAll({ clienteId: user.sub });
+    if (user && user.rol === 'abogado') return this.cases.findAll({ abogadoId: user.sub });
+    return this.cases.findAll(filter); // administrador: todos
   }
 }
 

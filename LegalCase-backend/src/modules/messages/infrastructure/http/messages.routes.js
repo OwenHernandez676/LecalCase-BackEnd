@@ -10,10 +10,10 @@ function messagesRoutes(deps) {
   router.use(requireAuth(deps.tokens));
 
   router.get('/:expedienteId', validateObjectId('expedienteId'), asyncHandler(async (req, res) => {
-    res.json(await deps.listMsgs.execute(req.params.expedienteId));
+    res.json(await deps.listMsgs.execute(req.params.expedienteId, req.user));
   }));
   router.post('/', validateDto(SendMessageDto), asyncHandler(async (req, res) => {
-    res.status(201).json(await deps.sendMsg.execute(req.body));
+    res.status(201).json(await deps.sendMsg.execute(req.body, req.user));
   }));
   return router;
 }

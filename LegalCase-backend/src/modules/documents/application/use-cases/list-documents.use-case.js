@@ -19,14 +19,16 @@ class ListDocumentsUseCase {
    * @param {{ sub: string, rol: string }} [user] Usuario autenticado (del JWT).
    */
   async execute(expedienteId, user) {
-    if (user && user.rol === 'cliente') {
-      const misCasos = await this.cases.findAll({ clienteId: user.sub });
+    // Cliente: solo documentos de SUS expedientes. Abogado: solo de los asignados a él.
+    if (user && (user.rol === 'cliente' || user.rol === 'abogado')) {
+      const filtro = user.rol === 'cliente' ? { clienteId: user.sub } : { abogadoId: user.sub };
+      const misCasos = await this.cases.findAll(filtro);
       const ids = new Set(misCasos.map((c) => c.id));
       if (expedienteId) return ids.has(expedienteId) ? this.repo.findAll(expedienteId) : [];
       const todos = await this.repo.findAll();
       return todos.filter((d) => ids.has(d.expedienteId));
     }
-    return this.repo.findAll(expedienteId);
+    return this.repo.findAll(expedienteId); // administrador: todos
   }
 }
 

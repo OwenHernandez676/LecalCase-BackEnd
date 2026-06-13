@@ -19,6 +19,7 @@ class CreateCaseUseCase {
       cliente: dto.cliente,
       clienteId: dto.clienteId ?? null,
       abogado: dto.abogado ?? null,
+      abogadoId: dto.abogadoId ?? null,
       estado: 'Pendiente',
       prioridad: dto.prioridad,
       progreso: 0,

@@ -12,11 +12,13 @@ const { MongoMessageRepository } = require('../modules/messages/infrastructure/p
 const { MongoNotificationRepository } = require('../modules/notifications/infrastructure/persistence/mongo-notification.repository');
 const { MongoActivityRepository } = require('../modules/activities/infrastructure/persistence/mongo-activity.repository');
 const { MongoAuditRepository } = require('../modules/audit/infrastructure/persistence/mongo-audit.repository');
+const { MongoTaskRepository } = require('../modules/tasks/infrastructure/persistence/mongo-task.repository');
 const { NodemailerEmailSender } = require('../email/nodemailer-email-sender.adapter');
 
 // Casos de uso
 const { LoginUseCase } = require('../modules/auth/application/use-cases/login.use-case');
 const { CreateUserUseCase } = require('../modules/users/application/use-cases/create-user.use-case');
+const { OnboardUserUseCase } = require('../modules/users/application/use-cases/onboard-user.use-case');
 const { ListUsersUseCase } = require('../modules/users/application/use-cases/list-users.use-case');
 const { FindUserUseCase } = require('../modules/users/application/use-cases/find-user.use-case');
 const { UpdateUserUseCase } = require('../modules/users/application/use-cases/update-user.use-case');
@@ -42,6 +44,10 @@ const { ListCaseActivitiesUseCase } = require('../modules/activities/application
 const { CreateActivityUseCase } = require('../modules/activities/application/use-cases/create-activity.use-case');
 const { RecordAuditUseCase } = require('../modules/audit/application/use-cases/record-audit.use-case');
 const { ListAuditUseCase } = require('../modules/audit/application/use-cases/list-audit.use-case');
+const { ListTasksUseCase } = require('../modules/tasks/application/use-cases/list-tasks.use-case');
+const { CreateTaskUseCase } = require('../modules/tasks/application/use-cases/create-task.use-case');
+const { UpdateTaskUseCase } = require('../modules/tasks/application/use-cases/update-task.use-case');
+const { DeleteTaskUseCase } = require('../modules/tasks/application/use-cases/delete-task.use-case');
 /**
  * COMPOSITION ROOT — Inyección de dependencias manual y explícita.
  *
@@ -70,12 +76,14 @@ function buildContainer(realtime) {
   const notificationRepo = new MongoNotificationRepository();
   const activityRepo = new MongoActivityRepository();
   const auditRepo = new MongoAuditRepository();
+  const taskRepo = new MongoTaskRepository();
 
   // ── Casos de uso reutilizados por la composición de aprobación ──
   const createCase = new CreateCaseUseCase(caseRepo, realtime);
   const createUser = new CreateUserUseCase(userRepo, hasher);
   const createActivity = new CreateActivityUseCase(activityRepo, realtime);
   const recordAudit = new RecordAuditUseCase(auditRepo);
+  const onboardUser = new OnboardUserUseCase(createUser, notificationRepo, recordAudit, email, env.frontendUrl);
 
   return {
     tokens,
@@ -84,6 +92,7 @@ function buildContainer(realtime) {
     },
     users: {
       createUser,
+      onboardUser,
       listUsers: new ListUsersUseCase(userRepo),
       findUser: new FindUserUseCase(userRepo),
       updateUser: new UpdateUserUseCase(userRepo),
@@ -101,7 +110,7 @@ function buildContainer(realtime) {
       // actividad + notificación + correo + auditoría.
       resolveRequest: new ResolveRequestUseCase(
         requestRepo, createCase, userRepo, createUser, createActivity,
-        notificationRepo, recordAudit, email, realtime, env.frontendUrl,
+        notificationRepo, recordAudit, email, realtime, env.frontendUrl, hasher,
       ),
     },
     documents: {
@@ -115,8 +124,8 @@ function buildContainer(realtime) {
       deleteEvent: new DeleteEventUseCase(eventRepo),
     },
     messages: {
-      sendMsg: new SendMessageUseCase(messageRepo, realtime),
-      listMsgs: new ListMessagesUseCase(messageRepo),
+      sendMsg: new SendMessageUseCase(messageRepo, realtime, caseRepo),
+      listMsgs: new ListMessagesUseCase(messageRepo, caseRepo),
     },
     notifications: {
       listNotifs: new ListNotificationsUseCase(notificationRepo),
@@ -129,6 +138,12 @@ function buildContainer(realtime) {
     },
     audit: {
       listAudit: new ListAuditUseCase(auditRepo),
+    },
+    tasks: {
+      listTasks: new ListTasksUseCase(taskRepo, caseRepo),
+      createTask: new CreateTaskUseCase(taskRepo, caseRepo, notificationRepo, realtime),
+      updateTask: new UpdateTaskUseCase(taskRepo, realtime),
+      deleteTask: new DeleteTaskUseCase(taskRepo, realtime),
     },
   };
 }

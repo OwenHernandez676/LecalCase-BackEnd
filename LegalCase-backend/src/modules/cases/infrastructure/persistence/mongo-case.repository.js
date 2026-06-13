@@ -14,7 +14,8 @@ class MongoCaseRepository {
     if (filter.prioridad) where.prioridad = filter.prioridad;
     if (filter.abogado) where.abogado = filter.abogado;
     if (filter.cliente) where.cliente = filter.cliente;
-    if (filter.clienteId) where.clienteId = filter.clienteId; // aislamiento por dueño
+    if (filter.clienteId) where.clienteId = filter.clienteId; // aislamiento por dueño (cliente)
+    if (filter.abogadoId) where.abogadoId = filter.abogadoId; // aislamiento por responsable (abogado)
 
     if (filter.q) {
       const rx = new RegExp(filter.q, 'i');

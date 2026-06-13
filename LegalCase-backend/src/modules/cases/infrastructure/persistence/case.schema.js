@@ -10,6 +10,9 @@ const caseSchema = new Schema(
     // sin depender de la coincidencia frágil por nombre.
     clienteId: { type: String, default: null, index: true },
     abogado: { type: String, default: null },
+    // Vínculo estable con el usuario abogado (id). Permite aislar por responsable
+    // sin depender de la coincidencia por nombre.
+    abogadoId: { type: String, default: null, index: true },
     estado: { type: String, required: true, enum: ['Pendiente', 'En proceso', 'En revisión', 'Finalizado'], default: 'Pendiente' },
     prioridad: { type: String, required: true, enum: ['Baja', 'Media', 'Alta', 'Crítica'], default: 'Media' },
     progreso: { type: Number, default: 0, min: 0, max: 100 },
