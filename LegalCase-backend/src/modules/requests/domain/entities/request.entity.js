@@ -17,7 +17,7 @@ class LegalRequest {
    * @param {Date} [createdAt]
    * @param {Date} [updatedAt]
    */
-  constructor(id, codigo, cliente, correo, telefono, tipo, prioridad, descripcion, estado, expedienteId, createdAt, updatedAt) {
+  constructor(id, codigo, cliente, correo, telefono, tipo, prioridad, descripcion, estado, expedienteId, createdAt, updatedAt, motivo, resueltaEn, clienteUserId) {
     this.id = id;
     this.codigo = codigo;
     this.cliente = cliente;
@@ -30,6 +30,9 @@ class LegalRequest {
     this.expedienteId = expedienteId;
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;
+    this.motivo = motivo;
+    this.resueltaEn = resueltaEn;
+    this.clienteUserId = clienteUserId;
   }
 }
 

@@ -10,7 +10,7 @@ function documentsRoutes(deps) {
   router.use(requireAuth(deps.tokens));
 
   router.get('/', requireRoles('administrador', 'abogado', 'cliente'), asyncHandler(async (req, res) => {
-    res.json(await deps.listDocs.execute(req.query.expedienteId));
+    res.json(await deps.listDocs.execute(req.query.expedienteId, req.user));
   }));
   router.post('/', requireRoles('administrador', 'abogado'), validateDto(CreateDocumentDto), asyncHandler(async (req, res) => {
     res.status(201).json(await deps.createDoc.execute(req.body));

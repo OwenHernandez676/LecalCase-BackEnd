@@ -7,6 +7,7 @@ class MongoRequestRepository {
     return new LegalRequest(
       d.id, d.codigo, d.cliente, d.correo, d.telefono, d.tipo, d.prioridad,
       d.descripcion, d.estado, d.expedienteId, d.createdAt, d.updatedAt,
+      d.motivo, d.resueltaEn, d.clienteUserId,
     );
   }
 

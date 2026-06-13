@@ -6,6 +6,9 @@ const caseSchema = new Schema(
     titulo: { type: String, required: true, trim: true },
     tipo: { type: String, required: true, enum: ['Mercantil', 'Laboral', 'Penal', 'Civil', 'Familia', 'Otro'] },
     cliente: { type: String, required: true },
+    // Vínculo estable con el usuario cliente (id). Permite aislar datos por dueño,
+    // sin depender de la coincidencia frágil por nombre.
+    clienteId: { type: String, default: null, index: true },
     abogado: { type: String, default: null },
     estado: { type: String, required: true, enum: ['Pendiente', 'En proceso', 'En revisión', 'Finalizado'], default: 'Pendiente' },
     prioridad: { type: String, required: true, enum: ['Baja', 'Media', 'Alta', 'Crítica'], default: 'Media' },

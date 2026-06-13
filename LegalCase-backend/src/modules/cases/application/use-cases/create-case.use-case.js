@@ -17,6 +17,7 @@ class CreateCaseUseCase {
       titulo: dto.titulo.trim(),
       tipo: dto.tipo,
       cliente: dto.cliente,
+      clienteId: dto.clienteId ?? null,
       abogado: dto.abogado ?? null,
       estado: 'Pendiente',
       prioridad: dto.prioridad,

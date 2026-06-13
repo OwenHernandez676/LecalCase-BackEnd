@@ -12,10 +12,10 @@ function casesRoutes(deps) {
   router.use(requireAuth(deps.tokens));
 
   router.get('/', requireRoles('administrador', 'abogado', 'cliente'), validateDto(CaseFilterDto, 'query'),
-    asyncHandler(async (req, res) => { res.json(await deps.listCases.execute(req.query)); }));
+    asyncHandler(async (req, res) => { res.json(await deps.listCases.execute(req.query, req.user)); }));
 
   router.get('/:id', requireRoles('administrador', 'abogado', 'cliente'), validateObjectId(),
-    asyncHandler(async (req, res) => { res.json(await deps.findCase.execute(req.params.id)); }));
+    asyncHandler(async (req, res) => { res.json(await deps.findCase.execute(req.params.id, req.user)); }));
 
   router.post('/', requireRoles('administrador'), validateDto(CreateCaseDto),
     asyncHandler(async (req, res) => { res.status(201).json(await deps.createCase.execute(req.body)); }));

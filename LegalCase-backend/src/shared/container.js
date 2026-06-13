@@ -11,6 +11,8 @@ const { MongoEventRepository } = require('../modules/events/infrastructure/persi
 const { MongoMessageRepository } = require('../modules/messages/infrastructure/persistence/mongo-message.repository');
 const { MongoNotificationRepository } = require('../modules/notifications/infrastructure/persistence/mongo-notification.repository');
 const { MongoActivityRepository } = require('../modules/activities/infrastructure/persistence/mongo-activity.repository');
+const { MongoAuditRepository } = require('../modules/audit/infrastructure/persistence/mongo-audit.repository');
+const { NodemailerEmailSender } = require('../email/nodemailer-email-sender.adapter');
 
 // Casos de uso
 const { LoginUseCase } = require('../modules/auth/application/use-cases/login.use-case');
@@ -37,6 +39,9 @@ const { ListNotificationsUseCase } = require('../modules/notifications/applicati
 const { MarkAllReadUseCase } = require('../modules/notifications/application/use-cases/mark-all-read.use-case');
 const { ListRecentActivitiesUseCase } = require('../modules/activities/application/use-cases/list-recent-activities.use-case');
 const { ListCaseActivitiesUseCase } = require('../modules/activities/application/use-cases/list-case-activities.use-case');
+const { CreateActivityUseCase } = require('../modules/activities/application/use-cases/create-activity.use-case');
+const { RecordAuditUseCase } = require('../modules/audit/application/use-cases/record-audit.use-case');
+const { ListAuditUseCase } = require('../modules/audit/application/use-cases/list-audit.use-case');
 /**
  * COMPOSITION ROOT — Inyección de dependencias manual y explícita.
  *
@@ -53,6 +58,7 @@ function buildContainer(realtime) {
   // ── Servicios compartidos ──
   const tokens = new JwtTokenSigner(env.jwtSecret, env.jwtExpiresIn);
   const hasher = new BcryptPasswordHasher();
+  const email = new NodemailerEmailSender(env.smtp);
 
   // ── Repositorios (adaptadores Mongo) ──
   const userRepo = new MongoUserRepository();
@@ -63,9 +69,13 @@ function buildContainer(realtime) {
   const messageRepo = new MongoMessageRepository();
   const notificationRepo = new MongoNotificationRepository();
   const activityRepo = new MongoActivityRepository();
+  const auditRepo = new MongoAuditRepository();
 
-  // ── Casos de uso ──
+  // ── Casos de uso reutilizados por la composición de aprobación ──
   const createCase = new CreateCaseUseCase(caseRepo, realtime);
+  const createUser = new CreateUserUseCase(userRepo, hasher);
+  const createActivity = new CreateActivityUseCase(activityRepo, realtime);
+  const recordAudit = new RecordAuditUseCase(auditRepo);
 
   return {
     tokens,
@@ -73,7 +83,7 @@ function buildContainer(realtime) {
       login: new LoginUseCase(userRepo, hasher, tokens),
     },
     users: {
-      createUser: new CreateUserUseCase(userRepo, hasher),
+      createUser,
       listUsers: new ListUsersUseCase(userRepo),
       findUser: new FindUserUseCase(userRepo),
       updateUser: new UpdateUserUseCase(userRepo),
@@ -87,11 +97,15 @@ function buildContainer(realtime) {
     requests: {
       createRequest: new CreateRequestUseCase(requestRepo, realtime),
       listRequests: new ListRequestsUseCase(requestRepo),
-      // Composición de casos de uso: aprobar solicitud → crear expediente
-      resolveRequest: new ResolveRequestUseCase(requestRepo, createCase, realtime),
+      // Composición de casos de uso: aprobar solicitud → cliente + expediente +
+      // actividad + notificación + correo + auditoría.
+      resolveRequest: new ResolveRequestUseCase(
+        requestRepo, createCase, userRepo, createUser, createActivity,
+        notificationRepo, recordAudit, email, realtime, env.frontendUrl,
+      ),
     },
     documents: {
-      listDocs: new ListDocumentsUseCase(documentRepo),
+      listDocs: new ListDocumentsUseCase(documentRepo, caseRepo),
       createDoc: new CreateDocumentUseCase(documentRepo, realtime),
       deleteDoc: new DeleteDocumentUseCase(documentRepo),
     },
@@ -110,7 +124,11 @@ function buildContainer(realtime) {
     },
     activities: {
       listRecent: new ListRecentActivitiesUseCase(activityRepo),
-      listByCase: new ListCaseActivitiesUseCase(activityRepo),
+      listByCase: new ListCaseActivitiesUseCase(activityRepo, caseRepo),
+      createActivity,
+    },
+    audit: {
+      listAudit: new ListAuditUseCase(auditRepo),
     },
   };
 }

@@ -11,6 +11,10 @@ const requestSchema = new Schema(
     descripcion: { type: String, required: true },
     estado: { type: String, enum: ['Pendiente', 'Aprobada', 'Rechazada'], default: 'Pendiente' },
     expedienteId: { type: String },
+    // Trazabilidad de la resolución (aprobación/rechazo).
+    motivo: { type: String },               // observaciones, principalmente en rechazo
+    resueltaEn: { type: Date },              // fecha de aprobación o rechazo
+    clienteUserId: { type: String },         // usuario cliente creado/enlazado al aprobar
   },
   { collection: 'solicitudes', timestamps: true },
 );

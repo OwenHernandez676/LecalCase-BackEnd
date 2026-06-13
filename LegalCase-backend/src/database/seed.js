@@ -23,18 +23,20 @@ async function seed() {
   const pwd = await bcrypt.hash('demo1234', 10);
 
   console.log('[seed] creando usuarios…');
-  await UserModel.insertMany([
+  const users = await UserModel.insertMany([
     { nombre: 'Mariela Fonseca', correo: 'admin@legalcase.hn', contrasena: pwd, rol: 'administrador', activo: true },
     { nombre: 'Rodrigo Castellanos', correo: 'abogado@legalcase.hn', contrasena: pwd, rol: 'abogado', especialidad: 'Laboral', cargaTrabajo: 72, activo: true },
     { nombre: 'Lucía Bográn', correo: 'lucia@legalcase.hn', contrasena: pwd, rol: 'abogado', especialidad: 'Civil', cargaTrabajo: 54, activo: true },
     { nombre: 'Diego Maradiaga', correo: 'diego@legalcase.hn', contrasena: pwd, rol: 'abogado', especialidad: 'Penal', cargaTrabajo: 88, activo: true },
     { nombre: 'Carlos Mendoza', correo: 'cliente@legalcase.hn', contrasena: pwd, rol: 'cliente', activo: true },
   ]);
+  // Id del cliente demo, para enlazar su expediente por clienteId (aislamiento por dueño).
+  const clienteDemo = users.find((u) => u.correo === 'cliente@legalcase.hn');
 
   console.log('[seed] creando expedientes…');
   const cases = await CaseModel.insertMany([
     { codigo: 'EXP-2048', titulo: 'Constitución de sociedad — Grupo Andares', tipo: 'Mercantil', cliente: 'Grupo Andares S.A.', abogado: 'Mariela Fonseca', estado: 'En proceso', prioridad: 'Alta', progreso: 45, fechaApertura: new Date('2026-02-06'), fechaVencimiento: new Date('2026-06-30') },
-    { codigo: 'EXP-2047', titulo: 'Demanda laboral por despido injustificado', tipo: 'Laboral', cliente: 'Carlos Mendoza', abogado: 'Rodrigo Castellanos', estado: 'En revisión', prioridad: 'Crítica', progreso: 68, fechaApertura: new Date('2026-02-04'), fechaVencimiento: new Date('2026-06-12') },
+    { codigo: 'EXP-2047', titulo: 'Demanda laboral por despido injustificado', tipo: 'Laboral', cliente: 'Carlos Mendoza', clienteId: clienteDemo.id, abogado: 'Rodrigo Castellanos', estado: 'En revisión', prioridad: 'Crítica', progreso: 68, fechaApertura: new Date('2026-02-04'), fechaVencimiento: new Date('2026-06-12') },
     { codigo: 'EXP-2046', titulo: 'Incumplimiento de contrato de suministro', tipo: 'Civil', cliente: 'Industrias Lempira', abogado: 'Diego Maradiaga', estado: 'En proceso', prioridad: 'Media', progreso: 32, fechaApertura: new Date('2026-01-28'), fechaVencimiento: new Date('2026-07-20') },
     { codigo: 'EXP-2045', titulo: 'Divorcio por mutuo consentimiento', tipo: 'Familia', cliente: 'Familia Discua', abogado: 'Lucía Bográn', estado: 'Finalizado', prioridad: 'Baja', progreso: 100, fechaApertura: new Date('2026-01-12'), fechaVencimiento: new Date('2026-05-05') },
   ]);

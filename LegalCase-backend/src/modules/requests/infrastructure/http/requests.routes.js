@@ -20,7 +20,10 @@ function requestsRoutes(deps) {
 
   router.patch('/:id/resolve', requireAuth(deps.tokens), requireRoles('administrador'),
     validateObjectId(), validateDto(ResolveRequestDto),
-    asyncHandler(async (req, res) => { res.json(await deps.resolveRequest.execute(req.params.id, req.body)); }));
+    asyncHandler(async (req, res) => {
+      // El actor (administrador autenticado) se toma del JWT, no del body, para la auditoría.
+      res.json(await deps.resolveRequest.execute(req.params.id, { ...req.body, actor: req.user.correo }));
+    }));
 
   return router;
 }

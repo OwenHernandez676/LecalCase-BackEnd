@@ -26,12 +26,13 @@ class LegalCase {
    * @param {Date} [createdAt]
    * @param {Date} [updatedAt]
    */
-  constructor(id, codigo, titulo, tipo, cliente, abogado, estado, prioridad, progreso, fechaApertura, fechaVencimiento, descripcion, createdAt, updatedAt) {
+  constructor(id, codigo, titulo, tipo, cliente, abogado, estado, prioridad, progreso, fechaApertura, fechaVencimiento, descripcion, createdAt, updatedAt, clienteId) {
     this.id = id;
     this.codigo = codigo;
     this.titulo = titulo;
     this.tipo = tipo;
     this.cliente = cliente;
+    this.clienteId = clienteId ?? null;
     this.abogado = abogado;
     this.estado = estado;
     this.prioridad = prioridad;
