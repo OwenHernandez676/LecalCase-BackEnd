@@ -29,7 +29,9 @@ class ResolveRequestUseCase {
         titulo: `${current.tipo} — ${current.cliente}`,
         tipo: current.tipo,
         cliente: current.cliente,
-        prioridad: current.prioridad,
+        // El abogado elegido por el administrador al aprobar queda asignado al expediente.
+        abogado: dto.abogado,
+        prioridad: dto.prioridad ?? current.prioridad,
         fechaVencimiento: new Date(Date.now() + 90 * 86400000).toISOString(),
         descripcion: current.descripcion,
       });
