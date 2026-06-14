@@ -12,6 +12,19 @@ class MongoDocumentRepository {
     return docs.map((d) => this.toDomain(d));
   }
 
+  /** Metadatos del documento (sin bytes) para verificar permisos. */
+  async findById(id) {
+    const d = await DocumentModel.findById(id).exec();
+    return d ? this.toDomain(d) : null;
+  }
+
+  /** Documento con su contenido binario y MIME, para la descarga real. */
+  async findContent(id) {
+    const d = await DocumentModel.findById(id).select('+contenido nombre tipo mimeType expedienteId').exec();
+    if (!d || !d.contenido) return null;
+    return { nombre: d.nombre, tipo: d.tipo, mimeType: d.mimeType, expedienteId: d.expedienteId, contenido: d.contenido };
+  }
+
   async create(d) {
     return this.toDomain(await DocumentModel.create(d));
   }

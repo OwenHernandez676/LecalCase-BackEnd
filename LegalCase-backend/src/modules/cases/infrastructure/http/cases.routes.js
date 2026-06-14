@@ -21,7 +21,7 @@ function casesRoutes(deps) {
     asyncHandler(async (req, res) => { res.status(201).json(await deps.createCase.execute(req.body)); }));
 
   router.patch('/:id/status', requireRoles('administrador', 'abogado'), validateObjectId(), validateDto(UpdateCaseStatusDto),
-    asyncHandler(async (req, res) => { res.json(await deps.updateStatus.execute(req.params.id, req.body)); }));
+    asyncHandler(async (req, res) => { res.json(await deps.updateStatus.execute(req.params.id, req.body, req.user)); }));
 
   return router;
 }

@@ -3,7 +3,7 @@ const { Schema, model } = require('mongoose');
 const notificationSchema = new Schema(
   {
     destinatario: { type: String, required: true, index: true },
-    tipo: { type: String, required: true, enum: ['comentario', 'audiencia', 'documento', 'estado', 'solicitud'] },
+    tipo: { type: String, required: true, enum: ['comentario', 'audiencia', 'documento', 'estado', 'solicitud', 'mensaje', 'evento'] },
     mensaje: { type: String, required: true },
     leida: { type: Boolean, default: false, index: true },
   },

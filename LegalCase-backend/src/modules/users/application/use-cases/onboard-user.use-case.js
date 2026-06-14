@@ -18,12 +18,13 @@ class OnboardUserUseCase {
    * @param {import('../../../../shared/ports/email-sender.port').EmailSender} email
    * @param {string} frontendUrl
    */
-  constructor(createUser, notifications, audit, email, frontendUrl) {
+  constructor(createUser, notifications, audit, email, frontendUrl, notify) {
     this.createUser = createUser;
     this.notifications = notifications;
     this.audit = audit;
     this.email = email;
     this.frontendUrl = frontendUrl;
+    this.notify = notify;
   }
 
   /**
@@ -46,15 +47,12 @@ class OnboardUserUseCase {
       console.warn(`[onboarding] ⚠️  El correo al ${user.rol} falló. Usa las credenciales de consola.`);
     }
 
-    // Notificación de bienvenida para el propio usuario.
-    try {
-      await this.notifications.create({
-        destinatario: user.id,
-        tipo: 'estado',
-        mensaje: `Bienvenido a LegalCase. Su cuenta de ${user.rol} fue creada.`,
-        leida: false,
-      });
-    } catch (e) { console.error('[notif] no se pudo crear la notificación de bienvenida:', e.message); }
+    // Notificación de bienvenida EN VIVO para el propio usuario.
+    await this.notify.execute({
+      destinatario: user.id,
+      tipo: 'estado',
+      mensaje: `Bienvenido a LegalCase. Su cuenta de ${user.rol} fue creada.`,
+    });
 
     // Trazabilidad.
     await this.audit.execute({

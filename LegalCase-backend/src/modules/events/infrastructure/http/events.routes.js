@@ -10,10 +10,10 @@ function eventsRoutes(deps) {
   router.use(requireAuth(deps.tokens));
 
   router.get('/', requireRoles('administrador', 'abogado', 'cliente'), asyncHandler(async (req, res) => {
-    res.json(await deps.listEvents.execute(req.query.from, req.query.to));
+    res.json(await deps.listEvents.execute(req.query.from, req.query.to, req.user));
   }));
   router.post('/', requireRoles('administrador', 'abogado'), validateDto(CreateEventDto), asyncHandler(async (req, res) => {
-    res.status(201).json(await deps.createEvent.execute(req.body));
+    res.status(201).json(await deps.createEvent.execute(req.body, req.user));
   }));
   router.delete('/:id', requireRoles('administrador', 'abogado'), validateObjectId(), asyncHandler(async (req, res) => {
     res.json(await deps.deleteEvent.execute(req.params.id));

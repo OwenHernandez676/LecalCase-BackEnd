@@ -4,7 +4,7 @@ const { EventModel } = require('./event.schema');
 /** Adaptador de persistencia: implementa el puerto EventRepository con Mongoose. */
 class MongoEventRepository {
   toDomain(d) {
-    return new CalendarEvent(d.id, d.titulo, d.tipo, d.fecha, d.expedienteId, d.descripcion, d.createdAt);
+    return new CalendarEvent(d.id, d.titulo, d.tipo, d.fecha, d.expedienteId, d.descripcion, d.createdAt, d.creadoPor);
   }
 
   async findAll(from, to) {

@@ -7,6 +7,11 @@ const documentSchema = new Schema(
     tamano: { type: String, required: true },
     expedienteId: { type: String, required: true, index: true },
     subidoPor: { type: String, required: true },
+    // Tipo MIME real y contenido binario del archivo. `contenido` se excluye por
+    // defecto (select:false) para que los listados no carguen los bytes; solo se
+    // recupera al descargar.
+    mimeType: { type: String, default: 'application/octet-stream' },
+    contenido: { type: Buffer, select: false },
   },
   { collection: 'documentos', timestamps: true },
 );

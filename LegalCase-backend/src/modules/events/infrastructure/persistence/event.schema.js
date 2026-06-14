@@ -7,6 +7,9 @@ const eventSchema = new Schema(
     fecha: { type: Date, required: true, index: true },
     expedienteId: { type: String, index: true },
     descripcion: { type: String },
+    // Autor del evento (id del usuario que lo creó). Permite aislar la agenda:
+    // cada abogado ve sus propios eventos, no los creados por otros abogados.
+    creadoPor: { type: String, default: null, index: true },
   },
   { collection: 'eventos', timestamps: true },
 );

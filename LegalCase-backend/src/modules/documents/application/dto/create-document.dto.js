@@ -7,6 +7,9 @@ const CreateDocumentDto = {
   tamano: { type: 'string' },
   expedienteId: { type: 'mongoId' },
   subidoPor: { type: 'string' },
+  // Contenido real del archivo en base64 (data URL o base64 puro) y su tipo MIME.
+  contenido: { type: 'string', optional: true },
+  mimeType: { type: 'string', optional: true, maxLength: 200 },
 };
 
 module.exports = { CreateDocumentDto };

@@ -32,7 +32,7 @@ class ResolveRequestUseCase {
    * @param {string} frontendUrl
    * @param {import('../../../auth/domain/ports/password-hasher.port').PasswordHasher} hasher
    */
-  constructor(requests, createCase, users, createUser, createActivity, notifications, audit, email, realtime, frontendUrl, hasher) {
+  constructor(requests, createCase, users, createUser, createActivity, notifications, audit, email, realtime, frontendUrl, hasher, notify) {
     this.requests = requests;
     this.createCase = createCase;
     this.users = users;
@@ -44,6 +44,7 @@ class ResolveRequestUseCase {
     this.realtime = realtime;
     this.frontendUrl = frontendUrl;
     this.hasher = hasher;
+    this.notify = notify;
   }
 
   async execute(id, dto) {
@@ -66,6 +67,14 @@ class ResolveRequestUseCase {
         detalle: `Solicitud ${current.codigo} rechazada${dto.motivo ? `: ${dto.motivo}` : ''}`,
         metadata: { cliente: current.cliente, correo: current.correo },
       });
+      // Si el solicitante ya tiene cuenta (cliente recurrente), notifícale el rechazo.
+      const existente = await this.users.findByEmail(current.correo);
+      if (existente) {
+        await this.notify.execute({
+          destinatario: existente.id, tipo: 'solicitud',
+          mensaje: `Su solicitud ${current.codigo} fue rechazada${dto.motivo ? `: ${dto.motivo}` : '.'}`,
+        });
+      }
       this.realtime.publish('request.resolved', { id, estado: 'Rechazada' });
       return updated;
     }
@@ -111,19 +120,17 @@ class ResolveRequestUseCase {
       expedienteId: created.id, tipo: 'creacion', descripcion: detalleCreacion, autor: actor,
     });
 
-    // 4. Notificaciones: al cliente (su expediente) y al abogado (caso asignado).
-    try {
-      await this.notifications.create({
-        destinatario: clienteUser.id, tipo: 'estado', leida: false,
-        mensaje: `Su solicitud fue aprobada. Se abrió el expediente ${created.codigo}.`,
+    // 4. Notificaciones EN VIVO: al cliente (su expediente) y al abogado (caso asignado).
+    await this.notify.execute({
+      destinatario: clienteUser.id, tipo: 'estado',
+      mensaje: `Su solicitud fue aprobada. Se abrió el expediente ${created.codigo}.`,
+    });
+    if (dto.abogadoId) {
+      await this.notify.execute({
+        destinatario: dto.abogadoId, tipo: 'estado',
+        mensaje: `Se le asignó el expediente ${created.codigo} — ${current.cliente}.`,
       });
-      if (dto.abogadoId) {
-        await this.notifications.create({
-          destinatario: dto.abogadoId, tipo: 'estado', leida: false,
-          mensaje: `Se le asignó el expediente ${created.codigo} — ${current.cliente}.`,
-        });
-      }
-    } catch (e) { console.error('[notif] no se pudo crear la notificación:', e.message); }
+    }
 
     // 5. Correo de bienvenida con credenciales (siempre: cliente nuevo o existente con password reset).
     const tpl = buildWelcomeClientEmail({

@@ -4,6 +4,7 @@ const { env } = require('./config/env');
 const { buildContainer } = require('./shared/container');
 const { createApp } = require('./app');
 const { SocketIORealtimeAdapter } = require('./realtime/socketio-realtime.adapter');
+const { JwtTokenSigner } = require('./modules/auth/infrastructure/services/jwt-token-signer');
 
 /**
  * Bootstrap de LegalCase Backend (MEAN: MongoDB Atlas + Express + Angular + Node).
@@ -16,7 +17,9 @@ async function bootstrap() {
   console.log(`[mongo] conectado a ${env.mongoUri.replace(/\/\/.*@/, '//***@')}`);
 
   const server = http.createServer();
-  const realtime = new SocketIORealtimeAdapter(server, env.frontendUrl);
+  // Socket.IO verifica el mismo JWT de la API para autenticar cada conexión.
+  const socketTokens = new JwtTokenSigner(env.jwtSecret, env.jwtExpiresIn);
+  const realtime = new SocketIORealtimeAdapter(server, env.frontendUrl, socketTokens);
   const container = buildContainer(realtime);
   const app = createApp(container);
 

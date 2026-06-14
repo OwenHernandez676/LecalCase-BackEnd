@@ -8,8 +8,9 @@ class ChatMessage {
    * @param {string} texto
    * @param {boolean} leido
    * @param {Date} [createdAt]
+   * @param {{ nombre: string, tipo: string, tamano: string, mime: string }|null} [adjunto] Metadatos del adjunto (sin bytes).
    */
-  constructor(id, expedienteId, emisor, receptor, texto, leido, createdAt) {
+  constructor(id, expedienteId, emisor, receptor, texto, leido, createdAt, adjunto) {
     this.id = id;
     this.expedienteId = expedienteId;
     this.emisor = emisor;
@@ -17,6 +18,7 @@ class ChatMessage {
     this.texto = texto;
     this.leido = leido;
     this.createdAt = createdAt;
+    this.adjunto = adjunto ?? null;
   }
 }
 

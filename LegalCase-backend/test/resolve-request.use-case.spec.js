@@ -1,6 +1,7 @@
 /**
  * Test unitario del caso de uso ResolveRequestUseCase — flujo crítico del negocio:
- * aprobar una solicitud debe crear el expediente automáticamente; rechazarla, no.
+ * aprobar una solicitud debe crear el expediente automáticamente y notificar a las
+ * partes; rechazarla, no crea expediente.
  */
 const { ResolveRequestUseCase } = require('../src/modules/requests/application/use-cases/resolve-request.use-case');
 const { BadRequestError, NotFoundError } = require('../src/shared/errors/app-error');
@@ -30,17 +31,41 @@ describe('ResolveRequestUseCase', () => {
         ))),
     };
     const createCase = { execute: jest.fn().mockResolvedValue(createdCase) };
-    const realtime = { publish: jest.fn() };
-    return { sut: new ResolveRequestUseCase(requests, createCase, realtime), requests, createCase, realtime };
+    const users = {
+      findByEmail: jest.fn().mockResolvedValue(null), // cliente nuevo
+      update: jest.fn(),
+    };
+    const createUser = { execute: jest.fn().mockResolvedValue({ id: 'u-cliente', correo: pendingRequest.correo }) };
+    const createActivity = { execute: jest.fn().mockResolvedValue({}) };
+    const notifications = { create: jest.fn().mockResolvedValue({}) };
+    const audit = { execute: jest.fn().mockResolvedValue({}) };
+    const email = { send: jest.fn().mockResolvedValue({ ok: true, skipped: false }) };
+    const realtime = { publish: jest.fn(), publishToUser: jest.fn() };
+    const hasher = { hash: jest.fn().mockResolvedValue('hash') };
+    const notify = { execute: jest.fn().mockResolvedValue({}) };
+    const sut = new ResolveRequestUseCase(
+      requests, createCase, users, createUser, createActivity,
+      notifications, audit, email, realtime, 'http://localhost:4200', hasher, notify,
+    );
+    return { sut, requests, createCase, createUser, realtime, notify, email };
   };
 
   it('al aprobar, crea el expediente automáticamente y enlaza su id', async () => {
-    const { sut, createCase, realtime } = buildSut();
-    const out = await sut.execute('r-1', { estado: 'Aprobada' });
+    const { sut, createCase, realtime, notify } = buildSut();
+    const out = await sut.execute('r-1', { estado: 'Aprobada', abogado: 'Dra. Paz', abogadoId: 'u-abg' });
     expect(createCase.execute).toHaveBeenCalledWith(expect.objectContaining({ tipo: 'Mercantil', cliente: 'Grupo Andares' }));
     expect(out.estado).toBe('Aprobada');
     expect(out.expedienteId).toBe('c-9');
     expect(realtime.publish).toHaveBeenCalledWith('request.resolved', expect.objectContaining({ estado: 'Aprobada', expedienteId: 'c-9' }));
+    // Notifica al cliente y al abogado asignado en tiempo real.
+    expect(notify.execute).toHaveBeenCalledWith(expect.objectContaining({ destinatario: 'u-cliente' }));
+    expect(notify.execute).toHaveBeenCalledWith(expect.objectContaining({ destinatario: 'u-abg' }));
+  });
+
+  it('al aprobar, envía el correo de bienvenida con credenciales', async () => {
+    const { sut, email } = buildSut();
+    await sut.execute('r-1', { estado: 'Aprobada' });
+    expect(email.send).toHaveBeenCalledWith(expect.objectContaining({ to: 'legal@andares.hn' }));
   });
 
   it('al rechazar, NO crea expediente', async () => {

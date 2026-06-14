@@ -11,8 +11,9 @@ class CalendarEvent {
    * @param {string} [expedienteId]
    * @param {string} [descripcion]
    * @param {Date} [createdAt]
+   * @param {string} [creadoPor] Id del usuario autor del evento.
    */
-  constructor(id, titulo, tipo, fecha, expedienteId, descripcion, createdAt) {
+  constructor(id, titulo, tipo, fecha, expedienteId, descripcion, createdAt, creadoPor) {
     this.id = id;
     this.titulo = titulo;
     this.tipo = tipo;
@@ -20,6 +21,7 @@ class CalendarEvent {
     this.expedienteId = expedienteId;
     this.descripcion = descripcion;
     this.createdAt = createdAt;
+    this.creadoPor = creadoPor;
   }
 }
 

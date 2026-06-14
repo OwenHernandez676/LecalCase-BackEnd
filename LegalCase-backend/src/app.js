@@ -25,7 +25,8 @@ function createApp(c) {
   const app = express();
 
   app.use(cors({ origin: [env.frontendUrl, 'http://localhost:4200'], credentials: true }));
-  app.use(express.json({ limit: '2mb' }));
+  // Límite alto: los archivos (documentos y adjuntos de chat) viajan como base64 en el JSON.
+  app.use(express.json({ limit: '30mb' }));
 
   app.get('/api/health', (_req, res) => { res.json({ status: 'ok', service: 'legalcase-backend' }); });
 

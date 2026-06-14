@@ -32,13 +32,16 @@ const { ResolveRequestUseCase } = require('../modules/requests/application/use-c
 const { ListDocumentsUseCase } = require('../modules/documents/application/use-cases/list-documents.use-case');
 const { CreateDocumentUseCase } = require('../modules/documents/application/use-cases/create-document.use-case');
 const { DeleteDocumentUseCase } = require('../modules/documents/application/use-cases/delete-document.use-case');
+const { DownloadDocumentUseCase } = require('../modules/documents/application/use-cases/download-document.use-case');
 const { ListEventsUseCase } = require('../modules/events/application/use-cases/list-events.use-case');
 const { CreateEventUseCase } = require('../modules/events/application/use-cases/create-event.use-case');
 const { DeleteEventUseCase } = require('../modules/events/application/use-cases/delete-event.use-case');
 const { SendMessageUseCase } = require('../modules/messages/application/use-cases/send-message.use-case');
 const { ListMessagesUseCase } = require('../modules/messages/application/use-cases/list-messages.use-case');
+const { DownloadAttachmentUseCase } = require('../modules/messages/application/use-cases/download-attachment.use-case');
 const { ListNotificationsUseCase } = require('../modules/notifications/application/use-cases/list-notifications.use-case');
 const { MarkAllReadUseCase } = require('../modules/notifications/application/use-cases/mark-all-read.use-case');
+const { CreateNotificationUseCase } = require('../modules/notifications/application/use-cases/create-notification.use-case');
 const { ListRecentActivitiesUseCase } = require('../modules/activities/application/use-cases/list-recent-activities.use-case');
 const { ListCaseActivitiesUseCase } = require('../modules/activities/application/use-cases/list-case-activities.use-case');
 const { CreateActivityUseCase } = require('../modules/activities/application/use-cases/create-activity.use-case');
@@ -83,7 +86,9 @@ function buildContainer(realtime) {
   const createUser = new CreateUserUseCase(userRepo, hasher);
   const createActivity = new CreateActivityUseCase(activityRepo, realtime);
   const recordAudit = new RecordAuditUseCase(auditRepo);
-  const onboardUser = new OnboardUserUseCase(createUser, notificationRepo, recordAudit, email, env.frontendUrl);
+  // Punto único de notificaciones: persiste + entrega en vivo (Socket.IO).
+  const createNotification = new CreateNotificationUseCase(notificationRepo, realtime);
+  const onboardUser = new OnboardUserUseCase(createUser, notificationRepo, recordAudit, email, env.frontendUrl, createNotification);
 
   return {
     tokens,
@@ -101,35 +106,38 @@ function buildContainer(realtime) {
       createCase,
       listCases: new ListCasesUseCase(caseRepo),
       findCase: new FindCaseUseCase(caseRepo),
-      updateStatus: new UpdateCaseStatusUseCase(caseRepo, realtime),
+      updateStatus: new UpdateCaseStatusUseCase(caseRepo, realtime, createNotification),
     },
     requests: {
-      createRequest: new CreateRequestUseCase(requestRepo, realtime),
+      createRequest: new CreateRequestUseCase(requestRepo, realtime, userRepo, createNotification),
       listRequests: new ListRequestsUseCase(requestRepo),
       // Composición de casos de uso: aprobar solicitud → cliente + expediente +
       // actividad + notificación + correo + auditoría.
       resolveRequest: new ResolveRequestUseCase(
         requestRepo, createCase, userRepo, createUser, createActivity,
-        notificationRepo, recordAudit, email, realtime, env.frontendUrl, hasher,
+        notificationRepo, recordAudit, email, realtime, env.frontendUrl, hasher, createNotification,
       ),
     },
     documents: {
       listDocs: new ListDocumentsUseCase(documentRepo, caseRepo),
-      createDoc: new CreateDocumentUseCase(documentRepo, realtime),
+      createDoc: new CreateDocumentUseCase(documentRepo, realtime, caseRepo, createNotification),
       deleteDoc: new DeleteDocumentUseCase(documentRepo),
+      downloadDoc: new DownloadDocumentUseCase(documentRepo, caseRepo),
     },
     events: {
-      listEvents: new ListEventsUseCase(eventRepo),
-      createEvent: new CreateEventUseCase(eventRepo, realtime),
+      listEvents: new ListEventsUseCase(eventRepo, caseRepo),
+      createEvent: new CreateEventUseCase(eventRepo, realtime, caseRepo, createNotification),
       deleteEvent: new DeleteEventUseCase(eventRepo),
     },
     messages: {
-      sendMsg: new SendMessageUseCase(messageRepo, realtime, caseRepo),
+      sendMsg: new SendMessageUseCase(messageRepo, realtime, caseRepo, createNotification),
       listMsgs: new ListMessagesUseCase(messageRepo, caseRepo),
+      downloadAttachment: new DownloadAttachmentUseCase(messageRepo, caseRepo),
     },
     notifications: {
       listNotifs: new ListNotificationsUseCase(notificationRepo),
       markAllRead: new MarkAllReadUseCase(notificationRepo),
+      createNotification,
     },
     activities: {
       listRecent: new ListRecentActivitiesUseCase(activityRepo),
