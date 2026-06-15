@@ -29,7 +29,7 @@ console.log('  FROM  :', cfg.from);
 console.log('────────────────────────────────────────\n');
 
 if (!cfg.host || !cfg.user || !cfg.pass) {
-  console.error('❌  Faltan variables SMTP en .env. Verifica SMTP_HOST, SMTP_USER y SMTP_PASS.');
+  console.error('  Faltan variables SMTP en .env. Verifica SMTP_HOST, SMTP_USER y SMTP_PASS.');
   process.exit(1);
 }
 
@@ -44,13 +44,13 @@ const transporter = nodemailer.createTransport({
   console.log('⏳  Verificando conexión SMTP...');
   try {
     await transporter.verify();
-    console.log('✅  Conexión SMTP OK — las credenciales son válidas.\n');
+    console.log('  Conexión SMTP OK — las credenciales son válidas.\n');
   } catch (err) {
-    console.error('❌  Fallo en verify():');
+    console.error('  Fallo en verify():');
     console.error('    Código  :', err.code);
     console.error('    Mensaje :', err.message);
     if (err.responseCode) console.error('    Respuesta SMTP:', err.responseCode, err.response);
-    console.error('\n💡  Si el código es EAUTH o 535: la App Password de Gmail fue revocada.');
+    console.error('\n  Si el código es EAUTH o 535: la App Password de Gmail fue revocada.');
     console.error('    → Ve a myaccount.google.com > Seguridad > Verificación en 2 pasos > Contraseñas de aplicación');
     console.error('    → Crea una nueva contraseña de aplicación (16 dígitos) y actualiza SMTP_PASS en .env');
     process.exit(1);
@@ -65,10 +65,10 @@ const transporter = nodemailer.createTransport({
       text:    'Si recibes este correo, el SMTP de LegalCase está configurado correctamente.',
       html:    '<p>Si recibes este correo, el SMTP de <strong>LegalCase</strong> está configurado correctamente.</p>',
     });
-    console.log('✅  Correo enviado. ID:', info.messageId);
+    console.log('  Correo enviado. ID:', info.messageId);
     console.log('    Revisa la bandeja de entrada de', cfg.user);
   } catch (err) {
-    console.error('❌  Fallo al enviar:');
+    console.error('  Fallo al enviar:');
     console.error('    Código  :', err.code);
     console.error('    Mensaje :', err.message);
     if (err.responseCode) console.error('    Respuesta SMTP:', err.responseCode, err.response);
