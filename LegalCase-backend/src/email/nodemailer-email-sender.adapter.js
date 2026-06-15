@@ -42,12 +42,12 @@ class NodemailerEmailSender extends EmailSender {
       return { ok: true, messageId: info.messageId };
     } catch (err) {
       // No propagamos: el correo es un efecto secundario, no debe abortar la operación.
-      console.error(`[email] ❌ fallo al enviar a ${to}:`);
+      console.error(`[email]  fallo al enviar a ${to}:`);
       console.error(`        Código:    ${err.code ?? 'N/A'}`);
       console.error(`        Mensaje:   ${err.message}`);
       if (err.responseCode) console.error(`        Resp SMTP: ${err.responseCode} ${err.response}`);
       if (err.code === 'EAUTH' || (err.responseCode && err.responseCode === 535)) {
-        console.error('        ⚠️  La App Password de Gmail fue revocada. Ve a myaccount.google.com > Seguridad > Contraseñas de aplicación y genera una nueva. Luego actualiza SMTP_PASS en .env y reinicia el servidor.');
+        console.error('          La App Password de Gmail fue revocada. Ve a myaccount.google.com > Seguridad > Contraseñas de aplicación y genera una nueva. Luego actualiza SMTP_PASS en .env y reinicia el servidor.');
       }
       return { ok: false, skipped: false };
     }
